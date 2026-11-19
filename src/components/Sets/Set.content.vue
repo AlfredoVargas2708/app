@@ -65,7 +65,7 @@
               v-else-if="setParts"
             >
               <div
-                class="flex xl:flex-row sm:flex-column align-items-stretch sm:align-items-start gap-3 w-full"
+                class="inputs-container flex xl:flex-row sm:flex-column align-items-stretch sm:align-items-start gap-3 w-full"
               >
                 <InputText
                   placeholder="Buscar Código Pieza..."
@@ -460,6 +460,10 @@ watch(
 @media (max-width: 767px) {
   .section-title {
     font-size: 1.25rem;
+  }
+
+  .inputs-container {
+    flex-direction: column;
   }
 }
 </style>
