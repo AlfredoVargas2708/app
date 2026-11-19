@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full">
+  <div class="w-full table-wrapper">
     <DataTable
       :value="value"
       :paginator="paginator"
@@ -8,22 +8,26 @@
       :rows="rows"
       :total-records="total"
       @page="emit('page', $event)"
-      paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
-      currentPageReportTemplate="Showing {first} to {last} of {totalRecords}"
+      :paginatorTemplate="paginatorTemplate"
+      :currentPageReportTemplate="currentPageReportTemplate"
+      :pageLinkSize="isMobile ? 3 : 5"
       :rowsPerPageOptions="[5, 10, 15, 20]"
       :class="tableClass"
+      :table-style="tableStyle"
+      scrollable
       striped-rows
     >
       <template #empty>
-        <span class="text-2xl">No Se Encontraron Elementos</span>
+        <span class="text-lg md:text-2xl">No Se Encontraron Elementos</span>
       </template>
       <Column
         v-for="column in tableColumns"
+        :key="column.field"
         :field="column.field"
         :style="{ 'max-width': '200px' }"
       >
         <template #header>
-          <span class="capitalize text-xl font-bold">{{
+          <span class="capitalize text-base md:text-xl font-bold">{{
             column.field === "pieces" ? "Num Pieces" : column.header
           }}</span>
         </template>
@@ -57,9 +61,13 @@
               outlined
               link
               severity="info"
+              aria-label="Abrir enlace"
               @click="openLink(data[column.field], data['color_id'] ?? '')"
             >
-              <Link :size="24" />
+              <div class="button-container">
+                <Link :size="24" />
+                <span class="md:ml-2 text-base hidden md:inline">Página Web</span>
+              </div>
             </Button>
           </div>
           <div v-else-if="column.field === 'pieces'">
@@ -71,7 +79,10 @@
         </template>
       </Column>
       <Column
-        v-if="tableClass !== 'colors-table' && tableClass !== 'minifigs-table-principal'"
+        v-if="
+          tableClass !== 'colors-table' &&
+          tableClass !== 'minifigs-table-principal'
+        "
         :style="{
           'max-width':
             tableClass === 'pieces-table' || tableClass === 'set-table'
@@ -80,37 +91,45 @@
         }"
       >
         <template #header>
-          <span class="capitalize text-xl font-bold">acciones</span>
+          <span class="capitalize text-base md:text-xl font-bold"
+            >acciones</span
+          >
         </template>
         <template #body="{ data }">
           <div class="buttons-container">
+            <!-- En móvil los botones muestran solo el ícono -->
             <Button
               outlined
               severity="success"
               class="w-full"
+              aria-label="Agregar"
               v-if="tableClass === 'pieces-table'"
             >
               <div class="button-container">
                 <PlusCircle :size="24" />
-                <span class="ml-2 text-base">Agregar</span>
+                <span class="md:ml-2 text-base hidden md:inline">Agregar</span>
               </div>
             </Button>
             <Button
               outlined
               severity="secondary"
               class="w-full"
+              aria-label="Instrucciones"
               v-if="tableClass.includes('set')"
               @click="openInstructions(data['set_num'], $event)"
             >
               <div class="button-container">
                 <Book :size="24" />
-                <span class="ml-2 text-base">Instrucciones</span>
+                <span class="md:ml-2 text-base hidden md:inline"
+                  >Instrucciones</span
+                >
               </div>
             </Button>
             <Button
               outlined
               severity="info"
               class="w-full"
+              aria-label="Piezas"
               v-if="tableClass === 'minifigs-table'"
               @click="
                 emit('minifig_parts', {
@@ -122,7 +141,7 @@
             >
               <div class="button-container">
                 <List :size="24" />
-                <span class="ml-2 text-base">Piezas</span>
+                <span class="md:ml-2 text-base hidden md:inline">Piezas</span>
               </div>
             </Button>
           </div>
@@ -190,6 +209,7 @@ import DataTable, { type DataTablePageEvent } from "primevue/datatable";
 import Column from "primevue/column";
 import type { Element } from "@/interfaces/element.interface";
 import { computed, ref } from "vue";
+import { useMediaQuery } from "@vueuse/core";
 import type { ColorElement } from "@/interfaces/color.interface";
 import Button from "primevue/button";
 import Link from "@primeicons/vue/link";
@@ -220,6 +240,27 @@ const emit = defineEmits<{
   change_element: [element_id: string];
   minifig_parts: [{ parts: Element[]; total: number; set_num: string }];
 }>();
+
+// Mismo punto de corte que "md" de PrimeFlex (768px)
+const isMobile = useMediaQuery("(max-width: 767px)");
+
+// En móvil el paginador se simplifica: anterior / "2 / 8" / siguiente
+const paginatorTemplate = computed(() =>
+  isMobile.value
+    ? "PrevPageLink CurrentPageReport NextPageLink"
+    : "FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport",
+);
+
+const currentPageReportTemplate = computed(() =>
+  isMobile.value
+    ? "{currentPage} / {totalPages}"
+    : "Showing {first} to {last} of {totalRecords}",
+);
+
+// Ancho mínimo en móvil: la tabla se desplaza horizontalmente en vez de comprimirse
+const tableStyle = computed(() =>
+  isMobile.value ? { "min-width": "36rem" } : undefined,
+);
 
 const setsStore = useSetsStore();
 const { instructions, instructionsError, instructionsLoading } =
@@ -324,6 +365,11 @@ function changeElementSearch(element_id: string) {
 </script>
 
 <style scoped>
+.table-wrapper {
+  max-width: 100%;
+  min-width: 0;
+}
+
 .img-container {
   width: 90px;
   height: 90px;
@@ -353,6 +399,7 @@ function changeElementSearch(element_id: string) {
 .color-box {
   width: 30px;
   height: 30px;
+  flex-shrink: 0;
   border: 1px solid #000000;
   border-radius: 6px;
 }
@@ -411,5 +458,44 @@ function changeElementSearch(element_id: string) {
 
 :deep(.p-paginator-current) {
   margin-left: 25px;
+}
+
+/* Tablet */
+@media (max-width: 991px) {
+  .img-container {
+    width: 72px;
+    height: 72px;
+  }
+}
+
+/* Móvil */
+@media (max-width: 767px) {
+  .img-container {
+    width: 56px;
+    height: 56px;
+  }
+
+  .color-box {
+    width: 22px;
+    height: 22px;
+  }
+
+  .color-container {
+    gap: 6px;
+  }
+
+  :deep(.p-datatable-column-header-content),
+  :deep(.p-datatable-tbody > tr > td) {
+    padding: 0.5rem;
+  }
+
+  :deep(.p-paginator) {
+    padding: 0.5rem 0;
+    gap: 0.25rem;
+  }
+
+  :deep(.p-paginator-current) {
+    margin-left: 0;
+  }
 }
 </style>

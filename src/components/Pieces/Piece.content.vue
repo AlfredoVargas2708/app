@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-column align-items-center gap-2 w-full">
     <div class="flex flex-row align-items-start gap-3 w-full">
-      <InputGroup :style="{ 'max-width': '300px' }">
+      <InputGroup class="w-full md:w-20rem">
         <InputText
           placeholder="Ingresar Código Pieza..."
           size="large"
@@ -25,7 +25,7 @@
       <div class="extra-container w-full">
         <div class="flex flex-column align-items-start w-full gap-2">
           <template v-if="element && !elementLoading">
-            <h2 class="underline">Pieza Otros Colores</h2>
+            <h2 class="underline section-title">Pieza Otros Colores</h2>
             <div
               v-if="elementColorsLoading"
               class="flex flex-column gap-3 w-full"
@@ -38,57 +38,56 @@
               class="flex flex-column align-items-start gap-3 w-full"
               v-else-if="elementColors && elementColorsSelect"
             >
-              <div class="flex flex-row align-items-center gap-2 w-full">
-                <Select
-                  v-model="colorSelected"
-                  placeholder="Buscar Color..."
-                  :options="elementColorsSelect.slice(0, 10)"
-                  show-clear
-                  :style="{ 'min-width': '180px' }"
-                  @change="searchColor()"
-                  size="large"
-                >
-                  <template #value="slotProps">
+              <Select
+                v-model="colorSelected"
+                placeholder="Buscar Color..."
+                :options="elementColorsSelect.slice(0, 10)"
+                show-clear
+                class="w-full md:w-auto"
+                :style="{ 'min-width': '180px' }"
+                @change="searchColor()"
+                size="large"
+              >
+                <template #value="slotProps">
+                  <div
+                    v-if="slotProps.value"
+                    class="flex align-items-center gap-2"
+                  >
                     <div
-                      v-if="slotProps.value"
-                      class="flex align-items-center gap-2"
+                      class="color-box"
+                      :style="{
+                        'background-color': `#${slotProps.value.color_rgb}`,
+                      }"
+                    ></div>
+                    <div>{{ slotProps.value.color_name }}</div>
+                  </div>
+                  <span v-else>{{ slotProps.placeholder }}</span>
+                </template>
+                <template #option="slotProps">
+                  <div class="flex align-items-center gap-2">
+                    <div
+                      class="color-box"
+                      :style="{
+                        'background-color': `#${slotProps.option.color_rgb}`,
+                      }"
+                    ></div>
+                    <div>{{ slotProps.option.color_name }}</div>
+                  </div>
+                </template>
+                <template #footer>
+                  <div class="p-3">
+                    <Button
+                      fluid
+                      severity="info"
+                      outlined
+                      size="small"
+                      @click="openMoreColors()"
                     >
-                      <div
-                        class="color-box"
-                        :style="{
-                          'background-color': `#${slotProps.value.color_rgb}`,
-                        }"
-                      ></div>
-                      <div>{{ slotProps.value.color_name }}</div>
-                    </div>
-                    <span v-else>{{ slotProps.placeholder }}</span>
-                  </template>
-                  <template #option="slotProps">
-                    <div class="flex align-items-center gap-2">
-                      <div
-                        class="color-box"
-                        :style="{
-                          'background-color': `#${slotProps.option.color_rgb}`,
-                        }"
-                      ></div>
-                      <div>{{ slotProps.option.color_name }}</div>
-                    </div>
-                  </template>
-                  <template #footer>
-                    <div class="p-3">
-                      <Button
-                        fluid
-                        severity="info"
-                        outlined
-                        size="small"
-                        @click="openMoreColors()"
-                      >
-                        Buscar Más Colores
-                      </Button>
-                    </div>
-                  </template>
-                </Select>
-              </div>
+                      Buscar Más Colores
+                    </Button>
+                  </div>
+                </template>
+              </Select>
               <Table
                 :value="elementColors"
                 table-class="colors-table"
@@ -102,10 +101,14 @@
             </div>
           </template>
         </div>
-        <Divider layout="vertical" class="section-divider" />
+
+        <!-- Divisor vertical en escritorio, horizontal en tablet/móvil -->
+        <Divider layout="vertical" class="section-divider divider-vertical" />
+        <Divider class="divider-horizontal" />
+
         <div class="flex flex-column align-items-start w-full gap-2">
           <template v-if="element && !elementLoading">
-            <h2 class="underline">Sets Con Pieza</h2>
+            <h2 class="underline section-title">Sets Con Pieza</h2>
             <div
               v-if="elementSetsLoading"
               class="flex flex-column gap-3 w-full"
@@ -118,8 +121,10 @@
               class="flex flex-column align-items-start gap-3 w-full"
               v-else-if="elementSets"
             >
-              <div class="flex flex-row align-items-center gap-3 w-full">
-                <InputGroup :style="{ 'max-width': '300px' }">
+              <div
+                class="flex xl:flex-row md:flex-column align-items-stretch md:align-items-start gap-3 w-full"
+              >
+                <InputGroup class="w-full md:w-full">
                   <InputText
                     placeholder="Ingresar Código Set..."
                     size="large"
@@ -133,16 +138,19 @@
                     <Spinner spin :size="26" />
                   </InputGroupAddon>
                 </InputGroup>
-                <AutoComplete
-                  size="large"
-                  placeholder="Buscar Temática Set..."
-                  v-model="themeSearch"
-                  :suggestions="filteredThemes ?? []"
-                  option-label="name"
-                  @option-select="searchByTheme"
-                  @complete="search($event)"
-                  :show-clear="true"
-                />
+                <div class="w-full md:w-full">
+                  <AutoComplete
+                    fluid
+                    size="large"
+                    placeholder="Buscar Temática Set..."
+                    v-model="themeSearch"
+                    :suggestions="filteredThemes ?? []"
+                    option-label="name"
+                    @option-select="searchByTheme"
+                    @complete="search($event)"
+                    :show-clear="true"
+                  />
+                </div>
               </div>
               <Table
                 :value="elementSets"
@@ -483,9 +491,14 @@ watch(
 <style scoped>
 .extra-container {
   display: grid;
-  grid-template-columns: 1.5fr 40px 2fr;
+  /* minmax(0, ...) evita que las tablas anchas desborden la grilla */
+  grid-template-columns: minmax(0, 1.5fr) 40px minmax(0, 2fr);
   gap: 15px;
   align-items: baseline;
+}
+
+.extra-container > div {
+  min-width: 0;
 }
 
 .section-divider {
@@ -494,6 +507,11 @@ watch(
 
 .section-divider::before {
   border-inline-start-width: 3px;
+}
+
+/* El divisor horizontal solo aparece cuando la grilla pasa a 1 columna */
+.divider-horizontal {
+  display: none;
 }
 
 .select-input {
@@ -511,5 +529,28 @@ watch(
   height: 20px;
   border: 1px solid #000000;
   border-radius: 6px;
+}
+
+/* Tablet y móvil: una sola columna */
+@media (max-width: 991px) {
+  .extra-container {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .divider-vertical {
+    display: none;
+  }
+
+  .divider-horizontal {
+    display: flex;
+    margin: 0.5rem 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .section-title {
+    font-size: 1.25rem;
+  }
 }
 </style>

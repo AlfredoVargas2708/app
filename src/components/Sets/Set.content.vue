@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-column align-items-center gap-2 w-full">
     <div class="flex flex-row align-items-start gap-3 w-full">
-      <InputGroup :style="{ 'max-width': '300px' }">
+      <InputGroup class="w-full md:w-20rem">
         <InputText
           placeholder="Ingresar Código Set..."
           size="large"
@@ -21,7 +21,7 @@
       <div class="extra-container w-full">
         <div class="flex flex-column align-items-start w-full gap-2">
           <template v-if="setData && !setLoading">
-            <h2 class="underline">Minifiguras En Set</h2>
+            <h2 class="underline section-title">Minifiguras En Set</h2>
             <div
               v-if="setMinifigsLoading"
               class="flex flex-column gap-3 w-full"
@@ -47,10 +47,11 @@
             </div>
           </template>
         </div>
-        <Divider layout="vertical" class="section-divider" />
+        <Divider layout="vertical" class="section-divider divider-vertical" />
+        <Divider class="divider-horizontal" />
         <div class="flex flex-column align-items-start w-full gap-2">
           <template v-if="setData && !setLoading">
-            <h2 class="underline">Piezas En Set</h2>
+            <h2 class="underline section-title">Piezas En Set</h2>
             <div
               v-if="setPartsLoading"
               class="flex flex-column gap-3 w-full"
@@ -63,16 +64,22 @@
               class="flex flex-column align-items-start gap-3 w-full"
               v-else-if="setParts"
             >
-              <div class="flex flex-row align-items-start gap-3 w-full">
-                <InputText placeholder="Buscar Código Pieza..." size="large" />
+              <div
+                class="flex xl:flex-row md:flex-column align-items-stretch md:align-items-start gap-3 w-full"
+              >
+                <InputText
+                  placeholder="Buscar Código Pieza..."
+                  size="large"
+                  class="w-full md:w-full"
+                />
                 <Select
                   v-model="colorSelected"
                   placeholder="Buscar Color..."
                   :options="setColors ?? []"
                   show-clear
-                  :style="{ 'min-width': '180px' }"
                   size="large"
                   @change="searchColor"
+                  class="w-full md:w-full"
                 >
                   <template #value="slotProps">
                     <div
@@ -107,10 +114,10 @@
                   :options="partCategories ?? []"
                   option-label="name"
                   option-value="id"
-                  :style="{ 'min-width': '380px' }"
                   show-clear
                   @change="searchPartCategory"
                   v-model="partCatIdSelected"
+                  class="w-full md:w-full"
                 />
               </div>
               <Table
@@ -391,6 +398,18 @@ watch(
 </script>
 
 <style scoped>
+.extra-container {
+  display: grid;
+  /* minmax(0, ...) evita que las tablas anchas desborden la grilla */
+  grid-template-columns: minmax(0, 1.5fr) 40px minmax(0, 2fr);
+  gap: 15px;
+  align-items: baseline;
+}
+
+.extra-container > div {
+  min-width: 0;
+}
+
 .section-divider {
   align-self: stretch;
 }
@@ -399,11 +418,19 @@ watch(
   border-inline-start-width: 3px;
 }
 
-.extra-container {
-  display: grid;
-  grid-template-columns: 2fr 20px 3fr;
-  gap: 15px;
-  align-items: baseline;
+/* El divisor horizontal solo aparece cuando la grilla pasa a 1 columna */
+.divider-horizontal {
+  display: none;
+}
+
+.select-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid gray;
+  padding: 5px 10px;
+  border-radius: 8px;
+  cursor: pointer;
 }
 
 .color-box {
@@ -411,5 +438,28 @@ watch(
   height: 20px;
   border: 1px solid #000000;
   border-radius: 6px;
+}
+
+/* Tablet y móvil: una sola columna */
+@media (max-width: 991px) {
+  .extra-container {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .divider-vertical {
+    display: none;
+  }
+
+  .divider-horizontal {
+    display: flex;
+    margin: 0.5rem 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .section-title {
+    font-size: 1.25rem;
+  }
 }
 </style>

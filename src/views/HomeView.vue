@@ -1,6 +1,6 @@
 <template>
-  <div class="flex flex-column align-items-center gap-3">
-    <h1>Inventario Piezas LEGO</h1>
+  <div class="flex flex-column align-items-center gap-3 px-2 md:px-4">
+    <h1 class="page-title text-center">Inventario Piezas LEGO</h1>
     <div class="flex flex-row align-items-start w-full">
       <Tabs v-model:value="tabValue" class="w-full">
         <TabList>
@@ -10,7 +10,7 @@
             :value="tab.id"
             :disabled="tab.disabled"
             :style="{ 'min-width': '100px' }"
-            ><span class="text-xl">{{ tab.title }}</span></Tab
+            ><span class="text-base md:text-xl">{{ tab.title }}</span></Tab
           >
         </TabList>
         <TabPanels class="tab-panel">
@@ -62,5 +62,29 @@ const tabValue = ref<string>("pieza");
   box-shadow:
     rgba(0, 0, 0, 0.12) 0px 1px 3px,
     rgba(0, 0, 0, 0.24) 0px 1px 2px;
+}
+
+.page-title {
+  font-size: 2.25rem;
+  margin: 0.67em 0;
+}
+
+/* Tablet */
+@media (max-width: 991px) {
+  .page-title {
+    font-size: 1.875rem;
+  }
+}
+
+/* Móvil */
+@media (max-width: 767px) {
+  .page-title {
+    font-size: 1.5rem;
+    margin: 0.5em 0;
+  }
+
+  .tab-panel {
+    padding: 0.25rem;
+  }
 }
 </style>
