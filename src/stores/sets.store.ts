@@ -109,13 +109,14 @@ export const useSetsStore = defineStore("sets", () => {
     page_size = 5,
     color_id: number | null,
     part_cat_id: number | null,
+    element_id: string | null,
   ) {
     setPartsError.value = null;
     setPartsLoading.value = true;
 
     try {
       const { data } = await axios.get(`${URL}/sets/parts`, {
-        params: { set_num, page, page_size, color_id, part_cat_id },
+        params: { set_num, page, page_size, color_id, part_cat_id, element_id },
       });
 
       setParts.value = data.results;

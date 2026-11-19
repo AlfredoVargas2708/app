@@ -71,6 +71,8 @@
                   placeholder="Buscar Código Pieza..."
                   size="large"
                   class="w-full sm:w-full"
+                  v-model="elementIdSearch"
+                  @input="onSearchByElement"
                 />
                 <Select
                   v-model="colorSelected"
@@ -192,6 +194,7 @@ const toast = useToast();
 const dialog = useDialog();
 const colorSelected = ref<ColorSet | null>(null);
 const partCatIdSelected = ref<number | null>(null);
+const elementIdSearch = ref<string | null>(null);
 
 const onSearch = useDebounceFn(async () => {
   if (!searchValue.value) {
@@ -203,10 +206,50 @@ const onSearch = useDebounceFn(async () => {
 
   await Promise.all([
     setStore.getMinifigsSet(searchValue.value),
-    setStore.getPartsSet(searchValue.value, undefined, undefined, null, null),
+    setStore.getPartsSet(
+      searchValue.value,
+      undefined,
+      undefined,
+      null,
+      null,
+      null,
+    ),
     setStore.getColorsSet(searchValue.value),
     elementStore.getPartCategories(),
   ]);
+}, 800);
+
+const onSearchByElement = useDebounceFn(async () => {
+  if (!elementIdSearch.value && setData.value) {
+    setStore.getPartsSet(
+      setData.value.set_num,
+      1,
+      setPartsRows.value,
+      colorSelected.value?.id ?? null,
+      partCatIdSelected.value,
+      null,
+    );
+    return;
+  }
+
+  if (!setData.value) return;
+
+  const elementId = elementIdSearch.value;
+  const colorId = colorSelected.value?.id ?? null;
+  const partCategorySelected = partCatIdSelected.value;
+  const setNum = setData.value.set_num;
+  setPartsFirst.value = 0;
+
+  setTimeout(() => {
+    setStore.getPartsSet(
+      setNum,
+      1,
+      setPartsRows.value,
+      colorId,
+      partCategorySelected,
+      elementId,
+    );
+  }, 600);
 }, 800);
 
 async function onSetPartsPage(event: DataTablePageEvent) {
@@ -221,6 +264,7 @@ async function onSetPartsPage(event: DataTablePageEvent) {
     event.rows,
     colorSelected.value?.id ?? null,
     partCatIdSelected.value ?? null,
+    elementIdSearch.value,
   );
 }
 
@@ -266,6 +310,7 @@ async function searchColor() {
       setPartsRows.value,
       null,
       partCatIdSelected.value,
+      elementIdSearch.value,
     );
     return;
   }
@@ -275,6 +320,7 @@ async function searchColor() {
   const colorId = colorSelected.value?.id ?? null;
   const partCategorySelected = partCatIdSelected.value;
   const setNum = setData.value.set_num;
+  const elementId = elementIdSearch.value;
   setPartsFirst.value = 0;
 
   setTimeout(() => {
@@ -284,6 +330,7 @@ async function searchColor() {
       setPartsRows.value,
       colorId,
       partCategorySelected,
+      elementId,
     );
   }, 600);
 }
@@ -295,7 +342,8 @@ async function searchPartCategory() {
       1,
       setPartsRows.value,
       colorSelected.value?.id ?? null,
-      partCatIdSelected.value,
+      null,
+      elementIdSearch.value,
     );
     return;
   }
@@ -314,6 +362,7 @@ async function searchPartCategory() {
       setPartsRows.value,
       colorId ?? null,
       partCatId ?? null,
+      elementIdSearch.value,
     );
   }, 600);
 }
