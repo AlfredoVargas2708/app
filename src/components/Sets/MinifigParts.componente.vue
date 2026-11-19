@@ -49,11 +49,12 @@ async function changePartsPage(event: DataTablePageEvent) {
   first.value = event.first;
   rows.value = event.rows;
 
-  data.value = await useMinifigStore().getMinifigParts(
-    setNum.value,
-    event.first / event.rows + 1,
-    rows.value,
-  );
+  data.value =
+    (await useMinifigStore().getMinifigParts(
+      setNum.value,
+      event.first / event.rows + 1,
+      rows.value,
+    )) ?? [];
 }
 
 watch(

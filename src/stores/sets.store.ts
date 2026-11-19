@@ -7,7 +7,7 @@ import axios from "axios";
 import { defineStore } from "pinia";
 import { ref } from "vue";
 
-const URL = `${import.meta.env.VITE_API_URL}`;
+const URL = import.meta.env.VITE_API_URL;
 
 export const useSetsStore = defineStore("sets", () => {
   const instructions = ref<{ URL: string; description: string }[] | null>(null);

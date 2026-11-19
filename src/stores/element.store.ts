@@ -6,7 +6,7 @@ import type { ColorElement } from "@/interfaces/color.interface";
 import type { SetInterface } from "@/interfaces/set.interface";
 import type { PartCategory } from "@/interfaces/part-categories.interface";
 
-const URL = `${import.meta.env.VITE_API_URL}`;
+const URL = import.meta.env.VITE_API_URL;
 
 export const useElementStore = defineStore("element", () => {
   const element = ref<Element>();

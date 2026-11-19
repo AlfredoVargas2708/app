@@ -32,6 +32,7 @@ import TabPanel from "primevue/tabpanel";
 import { markRaw, ref } from "vue";
 import PieceContent from "@/components/Pieces/Piece.content.vue";
 import SetContent from "@/components/Sets/Set.content.vue";
+import MinifigContent from "@/components/Minifigs/Minifig.content.vue";
 
 const tabs = ref([
   {
@@ -44,6 +45,12 @@ const tabs = ref([
     id: "set",
     title: "Set",
     content: markRaw(SetContent),
+    disabled: false,
+  },
+  {
+    id: "minifig",
+    title: "Minifiguras",
+    content: markRaw(MinifigContent),
     disabled: false,
   },
 ]);

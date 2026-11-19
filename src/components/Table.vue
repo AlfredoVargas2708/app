@@ -71,7 +71,7 @@
         </template>
       </Column>
       <Column
-        v-if="tableClass !== 'colors-table'"
+        v-if="tableClass !== 'colors-table' && tableClass !== 'minifigs-table-principal'"
         :style="{
           'max-width':
             tableClass === 'pieces-table' || tableClass === 'set-table'
@@ -242,7 +242,7 @@ const columnsToHide = ref<string[]>([
   "id",
   "set_name",
   "element_name",
-  "name",
+  props.tableClass === "minifigs-table" ? "name" : "",
 ]);
 
 const tableColumns = computed<{ field: string; header: string }[]>(() => {
@@ -403,7 +403,7 @@ function changeElementSearch(element_id: string) {
   font-size: 0.875rem;
 }
 
-.piece-table {
+.p-datatable {
   &:deep(td) {
     border-width: 1px 0px 0px 0px;
   }
