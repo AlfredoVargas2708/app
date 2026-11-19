@@ -1,0 +1,415 @@
+<template>
+  <div class="flex flex-column align-items-center gap-2 w-full">
+    <div class="flex flex-row align-items-start gap-3 w-full">
+      <InputGroup :style="{ 'max-width': '300px' }">
+        <InputText
+          placeholder="Ingresar Código Set..."
+          size="large"
+          v-model="searchValue"
+          @input="onSearch"
+        />
+        <InputGroupAddon v-if="setLoading">
+          <Spinner spin :size="26" />
+        </InputGroupAddon>
+      </InputGroup>
+    </div>
+    <div class="flex flex-column align-items-center w-full">
+      <template v-if="setData && !setLoading">
+        <Table :value="[setData]" table-class="set-table" :paginator="false" />
+      </template>
+      <Divider class="section-divider mb-0 mt-5" />
+      <div class="extra-container w-full">
+        <div class="flex flex-column align-items-start w-full gap-2">
+          <template v-if="setData && !setLoading">
+            <h2 class="underline">Minifiguras En Set</h2>
+            <div
+              v-if="setMinifigsLoading"
+              class="flex flex-column gap-3 w-full"
+              aria-label="Cargando minifiguras"
+              aria-busy="true"
+            >
+              <Skeleton v-for="value in 4" :key="value" height="4rem" />
+            </div>
+            <div
+              class="flex flex-column align-items-start gap-3 w-full"
+              v-else-if="setMinifigs"
+            >
+              <Table
+                :value="setMinifigs"
+                :paginator="true"
+                :total="setMinifigsTotal"
+                :first="setMinifigsFirst"
+                :rows="setMinifigsRows"
+                table-class="minifigs-table"
+                @minifig_parts="openMinifigParts($event)"
+                @page="onSetMinifigsPage($event)"
+              />
+            </div>
+          </template>
+        </div>
+        <Divider layout="vertical" class="section-divider" />
+        <div class="flex flex-column align-items-start w-full gap-2">
+          <template v-if="setData && !setLoading">
+            <h2 class="underline">Piezas En Set</h2>
+            <div
+              v-if="setPartsLoading"
+              class="flex flex-column gap-3 w-full"
+              aria-label="Cargando piezas"
+              aria-busy="true"
+            >
+              <Skeleton v-for="value in 4" :key="value" height="4rem" />
+            </div>
+            <div
+              class="flex flex-column align-items-start gap-3 w-full"
+              v-else-if="setParts"
+            >
+              <div class="flex flex-row align-items-start gap-3 w-full">
+                <InputText placeholder="Buscar Código Pieza..." size="large" />
+                <Select
+                  v-model="colorSelected"
+                  placeholder="Buscar Color..."
+                  :options="setColors ?? []"
+                  show-clear
+                  :style="{ 'min-width': '180px' }"
+                  size="large"
+                  @change="searchColor"
+                >
+                  <template #value="slotProps">
+                    <div
+                      v-if="slotProps.value"
+                      class="flex align-items-center gap-2"
+                    >
+                      <div
+                        class="color-box"
+                        :style="{
+                          'background-color': `#${slotProps.value.rgb}`,
+                        }"
+                      ></div>
+                      <div>{{ slotProps.value.name }}</div>
+                    </div>
+                    <span v-else>{{ slotProps.placeholder }}</span>
+                  </template>
+                  <template #option="slotProps">
+                    <div class="flex align-items-center gap-2">
+                      <div
+                        class="color-box"
+                        :style="{
+                          'background-color': `#${slotProps.option.rgb}`,
+                        }"
+                      ></div>
+                      <div>{{ slotProps.option.name }}</div>
+                    </div>
+                  </template>
+                </Select>
+                <Select
+                  placeholder="Buscar Categoría Pieza"
+                  size="large"
+                  :options="partCategories ?? []"
+                  option-label="name"
+                  option-value="id"
+                  :style="{ 'min-width': '380px' }"
+                  show-clear
+                  @change="searchPartCategory"
+                  v-model="partCatIdSelected"
+                />
+              </div>
+              <Table
+                :value="setParts"
+                :paginator="true"
+                :total="setPartsTotal"
+                :first="setPartsFirst"
+                :rows="setPartsRows"
+                table-class="pieces-table"
+                @page="onSetPartsPage"
+              />
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+  </div>
+  <Toast />
+</template>
+
+<script setup lang="ts">
+import { useSetsStore } from "@/stores/sets.store";
+import { useDebounceFn } from "@vueuse/core";
+import { storeToRefs } from "pinia";
+import InputGroup from "primevue/inputgroup";
+import InputGroupAddon from "primevue/inputgroupaddon";
+import InputText from "primevue/inputtext";
+import { ref, watch } from "vue";
+import Spinner from "@primeicons/vue/spinner";
+import Table from "../Table.vue";
+import Divider from "primevue/divider";
+import { useToast } from "primevue/usetoast";
+import Toast from "primevue/toast";
+import Skeleton from "primevue/skeleton";
+import type { DataTablePageEvent } from "primevue/datatable";
+import type { Element } from "@/interfaces/element.interface";
+import { useDialog } from "primevue/usedialog";
+import MinifigPartsComponente from "./MinifigParts.componente.vue";
+import Select from "primevue/select";
+import { type ColorSet } from "@/interfaces/color.interface";
+import { useElementStore } from "@/stores/element.store";
+
+const props = defineProps<{
+  tabValue: string;
+}>();
+
+const setStore = useSetsStore();
+const {
+  setData,
+  setError,
+  setLoading,
+  setMinifigs,
+  setMinifigsError,
+  setMinifigsLoading,
+  setMinifigsRows,
+  setMinifigsFirst,
+  setMinifigsTotal,
+  setParts,
+  setPartsError,
+  setPartsFirst,
+  setPartsLoading,
+  setPartsRows,
+  setPartsTotal,
+  setColors,
+  setColorsError,
+} = storeToRefs(setStore);
+const elementStore = useElementStore();
+const { partCategories, partCategoriesError } = storeToRefs(elementStore);
+
+const searchValue = ref<string | null>(null);
+const toast = useToast();
+const dialog = useDialog();
+const colorSelected = ref<ColorSet | null>(null);
+const partCatIdSelected = ref<number | null>(null);
+
+const onSearch = useDebounceFn(async () => {
+  if (!searchValue.value) {
+    setData.value = null;
+    return;
+  }
+
+  await setStore.getSet(searchValue.value);
+
+  await Promise.all([
+    setStore.getMinifigsSet(searchValue.value),
+    setStore.getPartsSet(searchValue.value, undefined, undefined, null, null),
+    setStore.getColorsSet(searchValue.value),
+    elementStore.getPartCategories(),
+  ]);
+}, 800);
+
+async function onSetPartsPage(event: DataTablePageEvent) {
+  const currentElement = setData.value;
+  if (!currentElement) return;
+
+  setPartsFirst.value = event.first;
+  setPartsRows.value = event.rows;
+  await setStore.getPartsSet(
+    currentElement.set_num,
+    event.page + 1,
+    event.rows,
+    colorSelected.value?.id ?? null,
+    partCatIdSelected.value ?? null,
+  );
+}
+
+async function onSetMinifigsPage(event: DataTablePageEvent) {
+  const currentElement = setData.value;
+  if (!currentElement) return;
+
+  setMinifigsFirst.value = event.first;
+  setMinifigsRows.value = event.rows;
+  await setStore.getMinifigsSet(
+    currentElement.set_num,
+    event.page + 1,
+    event.rows,
+  );
+}
+
+function openMinifigParts(event: {
+  parts: Element[];
+  total: number;
+  set_num: string;
+}) {
+  dialog.open(MinifigPartsComponente, {
+    props: {
+      header: "Piezas Minifigura",
+      style: {
+        width: "80vw",
+      },
+      breakpoints: {
+        "960px": "75vw",
+        "640px": "90vw",
+      },
+      modal: true,
+    },
+    data: { parts: event.parts, total: event.total, set_num: event.set_num },
+  });
+}
+
+async function searchColor() {
+  if (!colorSelected.value && setData.value) {
+    setStore.getPartsSet(
+      setData.value.set_num,
+      1,
+      setPartsRows.value,
+      null,
+      partCatIdSelected.value,
+    );
+    return;
+  }
+
+  if (!setData.value) return;
+
+  const colorId = colorSelected.value?.id ?? null;
+  const partCategorySelected = partCatIdSelected.value;
+  const setNum = setData.value.set_num;
+  setPartsFirst.value = 0;
+
+  setTimeout(() => {
+    setStore.getPartsSet(
+      setNum,
+      1,
+      setPartsRows.value,
+      colorId,
+      partCategorySelected,
+    );
+  }, 600);
+}
+
+async function searchPartCategory() {
+  if (!partCatIdSelected.value && setData.value) {
+    setStore.getPartsSet(
+      setData.value.set_num,
+      1,
+      setPartsRows.value,
+      colorSelected.value?.id ?? null,
+      partCatIdSelected.value,
+    );
+    return;
+  }
+
+  if (!setData.value) return;
+
+  const colorId = colorSelected.value?.id;
+  const partCatId = partCatIdSelected.value ?? undefined;
+  const setNum = setData.value.set_num;
+  setPartsFirst.value = 0;
+
+  setTimeout(() => {
+    setStore.getPartsSet(
+      setNum,
+      1,
+      setPartsRows.value,
+      colorId ?? null,
+      partCatId ?? null,
+    );
+  }, 600);
+}
+
+watch(
+  () => props.tabValue,
+  (newValue, oldValue) => {
+    if (newValue !== oldValue) {
+      setData.value = null;
+      searchValue.value = null;
+      setMinifigs.value = null;
+      setParts.value = null;
+    }
+  },
+);
+
+watch(
+  () => [
+    setError.value,
+    setMinifigsError.value,
+    setPartsError.value,
+    setColorsError.value,
+    partCategoriesError.value,
+  ],
+  (
+    [error, minifigsError, partsError, colorsError, partCategoriesError],
+    [
+      previousError,
+      previousMinifigsError,
+      previousPartsError,
+      previousColorsError,
+      previousPartCategoriesError,
+    ],
+  ) => {
+    if (error && error !== previousError) {
+      toast.add({
+        severity: "error",
+        summary: "Error Al Buscar Código",
+        detail: "No existe set con el código ingresado",
+        life: 4000,
+      });
+    }
+    if (minifigsError && minifigsError !== previousMinifigsError) {
+      setMinifigs.value = null;
+      toast.add({
+        severity: "error",
+        summary: "Error Al Obtener Minifiguras",
+        detail: "Hubo un error al encontrar las minifiguras en el set.",
+        life: 4000,
+      });
+    }
+    if (partsError && partsError !== previousPartsError) {
+      setParts.value = null;
+      toast.add({
+        severity: "error",
+        summary: "Error Al Obtener Minifiguras",
+        detail: "Hubo un error al encontrar las piezas en el set.",
+        life: 4000,
+      });
+    }
+    if (colorsError && colorsError !== previousColorsError) {
+      toast.add({
+        severity: "error",
+        summary: "Error Al Obtener Colores Set",
+        detail: "Hubo un error al encontrar colores en el set.",
+        life: 4000,
+      });
+    }
+    if (
+      partCategoriesError &&
+      partCategoriesError !== previousPartCategoriesError
+    ) {
+      toast.add({
+        severity: "error",
+        summary: "Error Al Obtener Categorias",
+        detail: "Hubo un error al encontrar las categorias.",
+        life: 4000,
+      });
+    }
+  },
+);
+</script>
+
+<style scoped>
+.section-divider {
+  align-self: stretch;
+}
+
+.section-divider::before {
+  border-inline-start-width: 3px;
+}
+
+.extra-container {
+  display: grid;
+  grid-template-columns: 2fr 20px 3fr;
+  gap: 15px;
+  align-items: baseline;
+}
+
+.color-box {
+  width: 20px;
+  height: 20px;
+  border: 1px solid #000000;
+  border-radius: 6px;
+}
+</style>
