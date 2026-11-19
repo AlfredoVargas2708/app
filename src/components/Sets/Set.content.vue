@@ -65,12 +65,12 @@
               v-else-if="setParts"
             >
               <div
-                class="flex xl:flex-row md:flex-column align-items-stretch md:align-items-start gap-3 w-full"
+                class="flex xl:flex-row sm:flex-column align-items-stretch sm:align-items-start gap-3 w-full"
               >
                 <InputText
                   placeholder="Buscar Código Pieza..."
                   size="large"
-                  class="w-full md:w-full"
+                  class="w-full sm:w-full"
                 />
                 <Select
                   v-model="colorSelected"
@@ -79,7 +79,7 @@
                   show-clear
                   size="large"
                   @change="searchColor"
-                  class="w-full md:w-full"
+                  class="w-full sm:w-full"
                 >
                   <template #value="slotProps">
                     <div
@@ -117,7 +117,7 @@
                   show-clear
                   @change="searchPartCategory"
                   v-model="partCatIdSelected"
-                  class="w-full md:w-full"
+                  class="w-full sm:w-full"
                 />
               </div>
               <Table

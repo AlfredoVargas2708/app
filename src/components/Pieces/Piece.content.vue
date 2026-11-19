@@ -43,7 +43,7 @@
                 placeholder="Buscar Color..."
                 :options="elementColorsSelect.slice(0, 10)"
                 show-clear
-                class="w-full md:w-auto"
+                class="w-full sm:w-full"
                 :style="{ 'min-width': '180px' }"
                 @change="searchColor()"
                 size="large"
@@ -122,9 +122,9 @@
               v-else-if="elementSets"
             >
               <div
-                class="flex xl:flex-row md:flex-column align-items-stretch md:align-items-start gap-3 w-full"
+                class="flex xl:flex-row sm:flex-column align-items-stretch sm:align-items-start gap-3 w-full"
               >
-                <InputGroup class="w-full md:w-full">
+                <InputGroup class="w-full sm:w-full">
                   <InputText
                     placeholder="Ingresar Código Set..."
                     size="large"
@@ -138,7 +138,7 @@
                     <Spinner spin :size="26" />
                   </InputGroupAddon>
                 </InputGroup>
-                <div class="w-full md:w-full">
+                <div class="w-full sm:w-full">
                   <AutoComplete
                     fluid
                     size="large"
