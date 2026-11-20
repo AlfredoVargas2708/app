@@ -402,8 +402,10 @@ function openAddModal(data: Element | SetInterface) {
   if ("set_num" in data) {
     dialogData["extra"] = data;
     dialogData["data"] = element.value;
+    dialogData["set_editable"] = false;
   } else {
     dialogData["data"] = data;
+    dialogData["set_editable"] = true;
   }
 
   dialog.open(AgregarModal, {
@@ -421,7 +423,9 @@ function openAddModal(data: Element | SetInterface) {
     },
     data: dialogData,
     onClose: (data: DynamicDialogCloseOptions) => {
-      console.log(data.data);
+      if (data) {
+        console.log(data.data);
+      }
     },
   });
 }

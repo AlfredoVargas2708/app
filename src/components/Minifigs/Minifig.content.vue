@@ -40,11 +40,13 @@
             >
               <Table
                 :value="minifigParts"
-                table-class="pieces-table"
+                table-class="pieces-minifigura-table"
                 :paginator="true"
                 :total="partsTotal"
                 :first="partsFirst"
                 :rows="partsRows"
+                @add_element="openAddModal"
+                @page="onSetPartsPage"
               />
             </div>
           </template>
@@ -73,6 +75,7 @@
                 :total="setsTotal"
                 :first="setsFirst"
                 :rows="setsRows"
+                @page="onElementSetsPage"
               />
             </div>
           </template>
@@ -95,6 +98,10 @@ import { useToast } from "primevue/usetoast";
 import Table from "../Table.vue";
 import Divider from "primevue/divider";
 import Skeleton from "primevue/skeleton";
+import AgregarModal from "../AgregarModal.vue";
+import type { DynamicDialogCloseOptions } from "primevue/dynamicdialogoptions";
+import { useDialog } from "primevue/usedialog";
+import type { DataTablePageEvent } from "primevue/datatable";
 
 const minifigStore = useMinifigStore();
 const {
@@ -120,6 +127,7 @@ const props = defineProps<{
 
 const searchValue = ref<string | null>(null);
 const toast = useToast();
+const dialog = useDialog();
 
 const onSearch = useDebounceFn(async () => {
   if (!searchValue.value) {
@@ -136,6 +144,63 @@ const onSearch = useDebounceFn(async () => {
     minifigStore.getMinifigSets(searchValue.value),
   ]);
 }, 600);
+
+async function onSetPartsPage(event: DataTablePageEvent) {
+  const currentElement = minifig.value;
+  if (!currentElement) return;
+
+  partsFirst.value = event.first;
+  partsRows.value = event.rows;
+  await minifigStore.getMinifigParts(
+    currentElement.set_num,
+    event.page + 1,
+    event.rows,
+  );
+}
+
+async function onElementSetsPage(event: DataTablePageEvent) {
+  const currentElement = minifig.value;
+  if (!currentElement) return;
+
+  setsFirst.value = event.first;
+  setsRows.value = event.rows;
+  await minifigStore.getMinifigSets(
+    currentElement.set_num,
+    event.page + 1,
+    event.rows,
+  );
+}
+
+function openAddModal(data: unknown) {
+  let dialogData: any = {};
+  if (data && typeof data === "object" && "element_id" in data) {
+    dialogData["extra"] = minifig.value;
+    dialogData["data"] = data;
+    dialogData["set_editable"] = false;
+    dialogData["minifigura"] = true;
+  }
+
+  dialog.open(AgregarModal, {
+    props: {
+      header: "Agregar Pedido",
+      style: {
+        width: "80vw",
+        height: "90vh",
+      },
+      breakpoints: {
+        "960px": "75vw",
+        "640px": "90vw",
+      },
+      modal: true,
+    },
+    data: dialogData,
+    onClose: (data: DynamicDialogCloseOptions) => {
+      if (data) {
+        console.log(data.data);
+      }
+    },
+  });
+}
 
 watch(
   () => [minifigError.value, partsError.value, setsError.value],
@@ -186,7 +251,7 @@ watch(
 .extra-container {
   display: grid;
   /* minmax(0, ...) evita que las tablas anchas desborden la grilla */
-  grid-template-columns: minmax(0, 1.5fr) 40px minmax(0, 2fr);
+  grid-template-columns: minmax(0, 1.75fr) 40px minmax(0, 2fr);
   gap: 15px;
   align-items: baseline;
 }

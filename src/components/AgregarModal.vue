@@ -14,7 +14,7 @@
       </div>
       <div class="set-info">
         <h2 class="my-0 w-full">Información Set</h2>
-        <div class="set-inputs">
+        <div class="set-inputs" :class="{ minifigura: isMinifigura }">
           <div class="set-input" v-for="setField in setFields">
             <label :for="setField" class="capitalize pl-1">{{
               getSetLabel(setField)
@@ -23,7 +23,8 @@
               <InputText
                 :model-value="getSetField(setField)"
                 :disabled="
-                  setField !== 'set_num' && getSetField(setField) !== ''
+                  !(setEditable ?? false) ||
+                  (setField !== 'set_num' && (setEditable ?? false))
                 "
                 @input="onSetInput(setField, $event)"
               />
@@ -74,12 +75,18 @@
               show-clear
             />
           </div>
-          <div class="quantity-input">
-            <label class="pl-1" for="task">Cantidad Pedida</label>
+          <div class="quantity-input relative">
+            <label class="pl-1" for="quantity">Cantidad Pedida</label>
             <InputNumber
               v-model="quantityValue"
+              input-id="quantity"
               placeholder="Ingresar Cantidad Pieza Pedida"
+              :invalid="exceedsMax"
+              @input="onQuantityInput"
             />
+            <span class="absolute top-100 text-red-500" v-if="exceedsMax">
+              Máximo Cantidad Ingresada
+            </span>
           </div>
           <div class="completo-input">
             <label class="pl-1" for="pedido">Pedido Completo</label>
@@ -118,9 +125,10 @@
 
 <script setup lang="ts">
 import type { DynamicDialogInstance } from "primevue/dynamicdialogoptions";
-import { inject, ref, type Ref } from "vue";
+import { computed, inject, ref, watch, type Ref } from "vue";
 import InputText from "primevue/inputtext";
 import InputNumber from "primevue/inputnumber";
+import type { InputNumberInputEvent } from "primevue/inputnumber";
 import Select from "primevue/select";
 import Button from "primevue/button";
 import Times from "@primeicons/vue/times";
@@ -134,11 +142,20 @@ import InputGroup from "primevue/inputgroup";
 import InputGroupAddon from "primevue/inputgroupaddon";
 import Spinner from "@primeicons/vue/spinner";
 import { useToast } from "primevue/usetoast";
+import type { Element } from "@/interfaces/element.interface";
 
 const dialogRef = inject<Ref<DynamicDialogInstance>>("dialogRef");
 const extraData = ref<unknown | null>(dialogRef?.value.data.extra);
+const setEditable = ref<boolean | null>(dialogRef?.value.data?.set_editable);
+const isMinifigura = ref<boolean | undefined>(dialogRef?.value.data.minifigura);
 const setsStore = useSetsStore();
-const { setSearch, setSearchError, setSearchLoading } = storeToRefs(setsStore);
+const {
+  setSearch,
+  setSearchError,
+  setSearchLoading,
+  setPartQuantity,
+  setPartQuantityError,
+} = storeToRefs(setsStore);
 const toast = useToast();
 
 const elementFields = [
@@ -203,7 +220,33 @@ const searchExtraData = useDebounceFn(async (setNum: string) => {
 
   if (setSearchError.value) return; // no pises extraData si falló
   extraData.value = setSearch.value;
+
+  const elementId = (dialogRef?.value.data.data as Element).element_id;
+
+  await Promise.all([setsStore.getSetPartQuantity(normalized, elementId)]);
+
+  if (setPartQuantityError.value) {
+    toast.add({
+      severity: "error",
+      summary: "Error Al Buscar Cantidad Máxima Pieza En Set",
+      detail: "No se encontro el set que contiene la pieza",
+    });
+    return;
+  }
 }, 800);
+
+const typedQuantity = ref<number | null>(null);
+
+const onQuantityInput = (event: InputNumberInputEvent) => {
+  typedQuantity.value = typeof event.value === "number" ? event.value : null;
+};
+
+const exceedsMax = computed(
+  () =>
+    typedQuantity.value != null &&
+    setPartQuantity.value != null &&
+    typedQuantity.value > setPartQuantity.value,
+);
 
 function cancelOperation() {
   dialogRef?.value.close();
@@ -271,6 +314,14 @@ function createOperation() {
 .element-inputs,
 .set-inputs {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+
+  &.minifigura {
+    grid-template-columns: repeat(1, 1fr);
+
+    div:nth-child(3) {
+      display: none;
+    }
+  }
 }
 
 .extra-inputs {

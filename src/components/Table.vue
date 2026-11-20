@@ -11,7 +11,7 @@
       :paginatorTemplate="paginatorTemplate"
       :currentPageReportTemplate="currentPageReportTemplate"
       :pageLinkSize="isMobile ? 3 : 5"
-      :rowsPerPageOptions="[5, 10, 15, 20]"
+      :rowsPerPageOptions="[1, 2, 5, 10, 15, 20]"
       :class="tableClass"
       :table-style="tableStyle"
       scrollable
@@ -107,7 +107,7 @@
               aria-label="Agregar"
               v-if="
                 tableClass === 'pieces-table' ||
-                tableClass === 'sets-piece-table'
+                tableClass === 'sets-piece-table' || tableClass === 'pieces-minifigura-table'
               "
               @click="emit('add_element', data)"
             >

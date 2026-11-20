@@ -130,6 +130,7 @@
                 :rows="setPartsRows"
                 table-class="pieces-table"
                 @page="onSetPartsPage"
+                @add_element="openAddModal"
               />
             </div>
           </template>
@@ -159,6 +160,8 @@ import MinifigPartsComponente from "./MinifigParts.componente.vue";
 import Select from "primevue/select";
 import { type ColorSet } from "@/interfaces/color.interface";
 import { useElementStore } from "@/stores/element.store";
+import AgregarModal from "../AgregarModal.vue";
+import type { DynamicDialogCloseOptions } from "primevue/dynamicdialogoptions";
 
 const props = defineProps<{
   tabValue: string;
@@ -363,6 +366,36 @@ async function searchPartCategory() {
       elementIdSearch.value,
     );
   }, 600);
+}
+
+function openAddModal(data: unknown) {
+  let dialogData: any = {};
+  if (data && typeof data === "object" && "element_id" in data) {
+    dialogData["extra"] = setData.value;
+    dialogData["data"] = data;
+    dialogData["set_editable"] = false;
+  }
+
+  console.log(dialogData)
+
+  dialog.open(AgregarModal, {
+    props: {
+      header: "Agregar Pedido",
+      style: {
+        width: "80vw",
+        height: "90vh",
+      },
+      breakpoints: {
+        "960px": "75vw",
+        "640px": "90vw",
+      },
+      modal: true,
+    },
+    data: dialogData,
+    onClose: (data: DynamicDialogCloseOptions) => {
+      console.log(data.data);
+    },
+  });
 }
 
 watch(
