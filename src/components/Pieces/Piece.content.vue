@@ -19,6 +19,7 @@
           :value="[element]"
           table-class="pieces-table"
           :paginator="false"
+          @add_element="openAddModal($event)"
         />
       </template>
       <Divider class="section-divider mb-0 mt-5" />
@@ -154,12 +155,13 @@
               </div>
               <Table
                 :value="elementSets"
-                table-class="sets-table"
+                table-class="sets-piece-table"
                 :paginator="true"
                 :total="elementSetsTotal"
                 :first="elementSetsFirst"
                 :rows="elementSetsRows"
                 @page="onElementSetsPage"
+                @add_element="openAddModal($event)"
               />
             </div>
           </template>
@@ -167,7 +169,6 @@
       </div>
     </div>
   </div>
-  <Toast />
 </template>
 
 <script setup lang="ts">
@@ -180,7 +181,6 @@ import { ref, watch } from "vue";
 import { useDebounceFn } from "@vueuse/core";
 import Spinner from "@primeicons/vue/spinner";
 import { useToast } from "primevue/usetoast";
-import Toast from "primevue/toast";
 import Table from "../Table.vue";
 import Divider from "primevue/divider";
 import Skeleton from "primevue/skeleton";
@@ -196,6 +196,9 @@ import type { ThemeInterface } from "@/interfaces/theme.interface";
 import AutoComplete, {
   type AutoCompleteCompleteEvent,
 } from "primevue/autocomplete";
+import type { SetInterface } from "@/interfaces/set.interface";
+import type { Element } from "@/interfaces/element.interface";
+import AgregarModal from "../AgregarModal.vue";
 
 const props = defineProps<{
   tabValue: string;
@@ -394,6 +397,35 @@ function openMoreColors() {
   });
 }
 
+function openAddModal(data: Element | SetInterface) {
+  let dialogData: any = {};
+  if ("set_num" in data) {
+    dialogData["extra"] = data;
+    dialogData["data"] = element.value;
+  } else {
+    dialogData["data"] = data;
+  }
+
+  dialog.open(AgregarModal, {
+    props: {
+      header: "Agregar Pedido",
+      style: {
+        width: "80vw",
+        height: "90vh",
+      },
+      breakpoints: {
+        "960px": "75vw",
+        "640px": "90vw",
+      },
+      modal: true,
+    },
+    data: dialogData,
+    onClose: (data: DynamicDialogCloseOptions) => {
+      console.log(data.data);
+    },
+  });
+}
+
 watch(
   () => themeSearch.value,
   (newValue) => {
@@ -492,7 +524,7 @@ watch(
 .extra-container {
   display: grid;
   /* minmax(0, ...) evita que las tablas anchas desborden la grilla */
-  grid-template-columns: minmax(0, 1.5fr) 40px minmax(0, 2fr);
+  grid-template-columns: minmax(0, 1fr) 40px minmax(0, 2fr);
   gap: 15px;
   align-items: baseline;
 }

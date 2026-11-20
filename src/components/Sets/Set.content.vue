@@ -137,7 +137,6 @@
       </div>
     </div>
   </div>
-  <Toast />
 </template>
 
 <script setup lang="ts">
@@ -152,7 +151,6 @@ import Spinner from "@primeicons/vue/spinner";
 import Table from "../Table.vue";
 import Divider from "primevue/divider";
 import { useToast } from "primevue/usetoast";
-import Toast from "primevue/toast";
 import Skeleton from "primevue/skeleton";
 import type { DataTablePageEvent } from "primevue/datatable";
 import type { Element } from "@/interfaces/element.interface";
@@ -202,7 +200,7 @@ const onSearch = useDebounceFn(async () => {
     return;
   }
 
-  await setStore.getSet(searchValue.value);
+  await setStore.getSet(searchValue.value, false);
 
   await Promise.all([
     setStore.getMinifigsSet(searchValue.value),

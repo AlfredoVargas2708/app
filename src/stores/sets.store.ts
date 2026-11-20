@@ -32,6 +32,9 @@ export const useSetsStore = defineStore("sets", () => {
   const setPartsRows = ref<number>(5);
   const setColors = ref<ColorSet[] | null>(null);
   const setColorsError = ref<unknown | null>(null);
+  const setSearch = ref<SetInterface | null>(null);
+  const setSearchLoading = ref<boolean>(false);
+  const setSearchError = ref<unknown | null>(null);
 
   async function getInstructions(set_num: string) {
     instructionsLoading.value = true;
@@ -68,20 +71,23 @@ export const useSetsStore = defineStore("sets", () => {
     }
   }
 
-  async function getSet(set_num: string) {
-    setLoading.value = true;
-    setError.value = null;
+  async function getSet(set_num: string, in_modal: boolean) {
+    const target = in_modal
+      ? { loading: setSearchLoading, error: setSearchError, data: setSearch }
+      : { loading: setLoading, error: setError, data: setData };
+
+    target.loading.value = true;
+    target.error.value = null;
 
     try {
       const { data } = await axios.get(`${URL}/sets/set`, {
         params: { set_num },
       });
-
-      setData.value = data;
+      target.data.value = data;
     } catch (error) {
-      setError.value = error;
+      target.error.value = error;
     } finally {
-      setLoading.value = false;
+      target.loading.value = false;
     }
   }
 
@@ -171,5 +177,8 @@ export const useSetsStore = defineStore("sets", () => {
     setColors,
     setColorsError,
     getColorsSet,
+    setSearch,
+    setSearchError,
+    setSearchLoading,
   };
 });

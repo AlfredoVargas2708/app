@@ -66,7 +66,9 @@
             >
               <div class="button-container">
                 <Link :size="24" />
-                <span class="md:ml-2 text-base hidden md:inline">Página Web</span>
+                <span class="md:ml-2 text-base hidden md:inline"
+                  >Página Web</span
+                >
               </div>
             </Button>
           </div>
@@ -103,7 +105,11 @@
               severity="success"
               class="w-full"
               aria-label="Agregar"
-              v-if="tableClass === 'pieces-table'"
+              v-if="
+                tableClass === 'pieces-table' ||
+                tableClass === 'sets-piece-table'
+              "
+              @click="emit('add_element', data)"
             >
               <div class="button-container">
                 <PlusCircle :size="24" />
@@ -148,7 +154,6 @@
         </template>
       </Column>
     </DataTable>
-    <Toast />
     <Popover ref="op" :style="{ width: '200px', padding: '5px' }">
       <template #container>
         <div
@@ -218,7 +223,6 @@ import Book from "@primeicons/vue/book";
 import { useSetsStore } from "@/stores/sets.store";
 import { storeToRefs } from "pinia";
 import { useToast } from "primevue/usetoast";
-import Toast from "primevue/toast";
 import Popover from "primevue/popover";
 import Skeleton from "primevue/skeleton";
 import Times from "@primeicons/vue/times";
@@ -239,6 +243,7 @@ const emit = defineEmits<{
   page: [event: DataTablePageEvent];
   change_element: [element_id: string];
   minifig_parts: [{ parts: Element[]; total: number; set_num: string }];
+  add_element: [data: Element | SetInterface];
 }>();
 
 // Mismo punto de corte que "md" de PrimeFlex (768px)

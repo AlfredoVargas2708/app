@@ -80,7 +80,6 @@
       </div>
     </div>
   </div>
-  <Toast />
 </template>
 
 <script setup lang="ts">
@@ -93,7 +92,6 @@ import { storeToRefs } from "pinia";
 import { useDebounceFn } from "@vueuse/core";
 import InputGroupAddon from "primevue/inputgroupaddon";
 import { useToast } from "primevue/usetoast";
-import Toast from "primevue/toast";
 import Table from "../Table.vue";
 import Divider from "primevue/divider";
 import Skeleton from "primevue/skeleton";
