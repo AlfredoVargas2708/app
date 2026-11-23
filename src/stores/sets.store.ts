@@ -37,6 +37,7 @@ export const useSetsStore = defineStore("sets", () => {
   const setSearchError = ref<unknown | null>(null);
   const setPartQuantity = ref<number | null>(null);
   const setPartQuantityError = ref<unknown | null>(null);
+  const setPartQuantityLoading = ref<boolean>(false);
 
   async function getInstructions(set_num: string) {
     instructionsLoading.value = true;
@@ -152,6 +153,7 @@ export const useSetsStore = defineStore("sets", () => {
 
   async function getSetPartQuantity(set_num: string, element_id: string) {
     setPartQuantityError.value = null;
+    setPartQuantityLoading.value = true
 
     try {
       const { data } = await axios.get<{ quantityElement: number }>(
@@ -164,6 +166,8 @@ export const useSetsStore = defineStore("sets", () => {
       setPartQuantity.value = data.quantityElement;
     } catch (error) {
       setPartQuantityError.value = error;
+    } finally {
+      setPartQuantityLoading.value = false;
     }
   }
 
@@ -201,6 +205,7 @@ export const useSetsStore = defineStore("sets", () => {
     setSearchLoading,
     setPartQuantity,
     setPartQuantityError,
+    setPartQuantityLoading,
     getSetPartQuantity,
   };
 });

@@ -199,6 +199,7 @@ import AutoComplete, {
 import type { SetInterface } from "@/interfaces/set.interface";
 import type { Element } from "@/interfaces/element.interface";
 import AgregarModal from "../AgregarModal.vue";
+import { useDatabaseStore } from "@/stores/database.store";
 
 const props = defineProps<{
   tabValue: string;
@@ -226,6 +227,8 @@ const {
 const setsStore = useSetsStore();
 const { themesSet, themesError } = storeToRefs(setsStore);
 const filteredThemes = ref<ThemeInterface[] | null>(null);
+const databaseStore = useDatabaseStore();
+const { createError } = storeToRefs(databaseStore);
 
 const searchValue = ref<string | null>(null);
 const toast = useToast();
@@ -422,9 +425,11 @@ function openAddModal(data: Element | SetInterface) {
       modal: true,
     },
     data: dialogData,
-    onClose: (data: DynamicDialogCloseOptions) => {
-      if (data) {
-        console.log(data.data);
+    onClose: async (data: DynamicDialogCloseOptions) => {
+      if (data.data) {
+        console.log("Creando pedido...");
+
+        await databaseStore.createOperation(data.data);
       }
     },
   });
@@ -455,14 +460,16 @@ watch(
     elementColorsError.value,
     elementSetsError.value,
     themesError.value,
+    createError.value,
   ],
   (
-    [error, colorsError, setsError, themesError],
+    [error, colorsError, setsError, themesError, createError],
     [
       previousError,
       previousColorsError,
       previousSetsError,
       previousThemesError,
+      previousCreateError,
     ],
   ) => {
     if (error && error !== previousError) {
@@ -497,6 +504,15 @@ watch(
         severity: "error",
         summary: "Error Al Obtener Set",
         detail: "Error en la busqueda de sets de la pieza",
+        life: 4000,
+      });
+    }
+    if (createError && createError !== previousCreateError) {
+      elementSets.value = null;
+      toast.add({
+        severity: "error",
+        summary: "Error Al Crear Pedido",
+        detail: "Error en creación de nuevo pedido",
         life: 4000,
       });
     }

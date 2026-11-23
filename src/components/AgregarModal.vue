@@ -77,13 +77,19 @@
           </div>
           <div class="quantity-input relative">
             <label class="pl-1" for="quantity">Cantidad Pedida</label>
-            <InputNumber
-              v-model="quantityValue"
-              input-id="quantity"
-              placeholder="Ingresar Cantidad Pieza Pedida"
-              :invalid="exceedsMax"
-              @input="onQuantityInput"
-            />
+            <InputGroup>
+              <InputNumber
+                v-model="quantityValue"
+                input-id="quantity"
+                placeholder="Ingresar Cantidad Pieza Pedida"
+                :invalid="exceedsMax"
+                :disabled="setPartQuantityLoading"
+                @input="onQuantityInput"
+              />
+              <InputGroupAddon v-if="setPartQuantityLoading">
+                <Spinner spin :size="24" />
+              </InputGroupAddon>
+            </InputGroup>
             <span class="absolute top-100 text-red-500" v-if="exceedsMax">
               Máximo Cantidad Ingresada
             </span>
@@ -125,7 +131,7 @@
 
 <script setup lang="ts">
 import type { DynamicDialogInstance } from "primevue/dynamicdialogoptions";
-import { computed, inject, ref, watch, type Ref } from "vue";
+import { computed, inject, onMounted, ref, watch, type Ref } from "vue";
 import InputText from "primevue/inputtext";
 import InputNumber from "primevue/inputnumber";
 import type { InputNumberInputEvent } from "primevue/inputnumber";
@@ -155,6 +161,7 @@ const {
   setSearchLoading,
   setPartQuantity,
   setPartQuantityError,
+  setPartQuantityLoading,
 } = storeToRefs(setsStore);
 const toast = useToast();
 
@@ -221,8 +228,11 @@ const searchExtraData = useDebounceFn(async (setNum: string) => {
   if (setSearchError.value) return; // no pises extraData si falló
   extraData.value = setSearch.value;
 
-  const elementId = (dialogRef?.value.data.data as Element).element_id;
+  await getQuantity(normalized);
+}, 800);
 
+const getQuantity = async (normalized: string) => {
+  const elementId = (dialogRef?.value.data.data as Element).element_id;
   await Promise.all([setsStore.getSetPartQuantity(normalized, elementId)]);
 
   if (setPartQuantityError.value) {
@@ -233,7 +243,7 @@ const searchExtraData = useDebounceFn(async (setNum: string) => {
     });
     return;
   }
-}, 800);
+};
 
 const typedQuantity = ref<number | null>(null);
 
@@ -254,7 +264,6 @@ function cancelOperation() {
 
 function createOperation() {
   if (
-    !extraData.value ||
     !taskValue.value ||
     !isPedidoValue.value ||
     !isAppearedValue.value ||
@@ -272,7 +281,7 @@ function createOperation() {
 
   const data = {
     ...dialogRef?.value.data.data,
-    ...extraData.value,
+    ...(extraData.value ?? {}),
     task: taskValue.value,
     pedido: isPedidoValue.value === "Si" ? true : false,
     completo: isAppearedValue.value === "Si" ? true : false,
@@ -281,6 +290,15 @@ function createOperation() {
 
   dialogRef?.value.close(data);
 }
+
+onMounted(async () => {
+  if (!extraData.value) return;
+
+  const setNum = (extraData.value as SetInterface).set_num;
+  const normalized = setNum.includes("-") ? setNum : `${setNum}-1`;
+
+  await getQuantity(normalized);
+});
 </script>
 
 <style scoped>
