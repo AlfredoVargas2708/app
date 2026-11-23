@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-column align-items-center w-full h-full">
-    <div class="info-container">
+    <div class="info-container" :class="{ piece: !isMinifigura }">
       <div class="element-info">
         <h2 class="my-0 w-full">Información Pieza</h2>
         <div class="element-inputs">
@@ -14,18 +14,22 @@
       </div>
       <div class="set-info">
         <h2 class="my-0 w-full">Información Set</h2>
-        <div class="set-inputs" :class="{ minifigura: isMinifigura }">
-          <div class="set-input" v-for="setField in setFields">
+        <div
+          class="set-inputs"
+          :class="{ minifigura: !getSetField('theme_name') }"
+        >
+          <div
+            class="set-input"
+            v-for="setField in setFields"
+            v-if="!isMinifigura"
+          >
             <label :for="setField" class="capitalize pl-1">{{
               getSetLabel(setField)
             }}</label>
             <InputGroup>
               <InputText
                 :model-value="getSetField(setField)"
-                :disabled="
-                  !(setEditable ?? false) ||
-                  (setField !== 'set_num' && (setEditable ?? false))
-                "
+                :disabled="disabledInput(setField)"
                 @input="onSetInput(setField, $event)"
               />
               <InputGroupAddon
@@ -38,6 +42,47 @@
                 <Spinner :size="24" spin
               /></InputGroupAddon>
             </InputGroup>
+          </div>
+          <div
+            class="minifig-input"
+            v-if="isMinifigura && setOptions.length > 1"
+          >
+            <label class="pl-1" for="set-select">Set a agregar</label>
+            <Select
+              input-id="set-select"
+              v-model="selectedSet"
+              :options="setOptions"
+              option-label="set_num"
+              placeholder="Seleccione el set"
+              show-clear
+              filter
+              @change="onSetSelected($event.value)"
+            >
+              <template #option="{ option }">
+                {{ getSetLabelText(option) }}
+              </template>
+              <template #value="{ value, placeholder }">
+                <span v-if="value">{{ getSetLabelText(value) }}</span>
+                <span v-else>{{ placeholder }}</span>
+              </template>
+            </Select>
+          </div>
+        </div>
+      </div>
+      <div class="minifig-info" v-if="isMinifigura">
+        <h2 class="my-0 w-full">Información Minifigura</h2>
+        <div
+          class="minifig-inputs"
+          :class="{ minifigura: !getSetField('theme_name') }"
+        >
+          <div class="minifig-input" v-for="minifigField in minifigFields">
+            <label :for="minifigField" class="capitalize pl-1">{{
+              getSetLabel(minifigField)
+            }}</label>
+            <InputText
+              :model-value="getMinifigField(minifigField)"
+              :disabled="disabledInput(minifigField)"
+            />
           </div>
         </div>
       </div>
@@ -54,6 +99,9 @@
           <div class="set-img">
             <img :src="getSetImg()" alt="" />
           </div>
+          <div class="minifig-img" v-if="isMinifigura">
+            <img :src="getMinifigImg()" alt="" />
+          </div>
         </div>
       </div>
       <div class="extra-container">
@@ -64,6 +112,7 @@
             <InputNumber
               v-model="taskValue"
               placeholder="Ingresar Número Task"
+              :useGrouping="false"
             />
           </div>
           <div class="pedido-input">
@@ -81,8 +130,7 @@
               <InputNumber
                 v-model="quantityValue"
                 input-id="quantity"
-                placeholder="Ingresar Cantidad Pieza Pedida"
-                :invalid="exceedsMax"
+                :placeholder="`Ingresar Cantidad Pieza Pedida. ${setPartQuantity ? `Máx: ${setPartQuantity}` : ''}`"
                 :disabled="setPartQuantityLoading"
                 @input="onQuantityInput"
               />
@@ -90,9 +138,6 @@
                 <Spinner spin :size="24" />
               </InputGroupAddon>
             </InputGroup>
-            <span class="absolute top-100 text-red-500" v-if="exceedsMax">
-              Máximo Cantidad Ingresada
-            </span>
           </div>
           <div class="completo-input">
             <label class="pl-1" for="pedido">Pedido Completo</label>
@@ -149,11 +194,17 @@ import InputGroupAddon from "primevue/inputgroupaddon";
 import Spinner from "@primeicons/vue/spinner";
 import { useToast } from "primevue/usetoast";
 import type { Element } from "@/interfaces/element.interface";
+import type { MinifigInterface } from "@/interfaces/minifig.interface";
 
 const dialogRef = inject<Ref<DynamicDialogInstance>>("dialogRef");
-const extraData = ref<unknown | null>(dialogRef?.value.data.extra);
-const setEditable = ref<boolean | null>(dialogRef?.value.data?.set_editable);
+const extraData = ref<SetInterface | null>(dialogRef?.value.data.extra ?? null);
+const minifigData = ref<MinifigInterface | null>(
+  dialogRef?.value.data.minifigData ?? null,
+);
 const isMinifigura = ref<boolean | undefined>(dialogRef?.value.data.minifigura);
+const setOptions = ref<SetInterface[]>(dialogRef?.value.data.setOptions ?? []);
+const selectedSet = ref<SetInterface | null>(extraData.value);
+
 const setsStore = useSetsStore();
 const {
   setSearch,
@@ -173,6 +224,7 @@ const elementFields = [
 ] as const;
 
 const setFields = ["set_num", "name", "theme_name"] as const;
+const minifigFields = ["set_num", "name"];
 
 const getElementField = (field: (typeof elementFields)[number]): string => {
   const value = (dialogRef?.value.data.data as Record<string, unknown>)?.[
@@ -183,6 +235,25 @@ const getElementField = (field: (typeof elementFields)[number]): string => {
 
 const getSetField = (field: (typeof setFields)[number]): string => {
   const value = (extraData.value as Record<string, unknown>)?.[field];
+  return value == null ? "" : String(value).replace("-1", "");
+};
+
+const getSetLabelText = (set: SetInterface) =>
+  `${set.set_num.replace("-1", "")} - ${set.name}`;
+
+const onSetSelected = async (set: SetInterface | null) => {
+  extraData.value = set;
+  setPartQuantity.value = null;
+  if (!set) return;
+
+  const normalized = set.set_num.includes("-")
+    ? set.set_num
+    : `${set.set_num}-1`;
+  await getQuantity(normalized);
+};
+
+const getMinifigField = (field: (typeof minifigFields)[number]): string => {
+  const value = (minifigData.value as Record<string, unknown>)?.[field];
   return value == null ? "" : String(value).replace("-1", "");
 };
 
@@ -208,6 +279,11 @@ const getSetImg = () => {
   return url || "/one_missing_brick.png";
 };
 
+const getMinifigImg = () => {
+  const url = minifigData.value?.set_img_url;
+  return url || "/one_missing_brick.png";
+};
+
 const taskValue = ref<number | null>(null);
 const isPedidoValue = ref<string | null>(null);
 const isAppearedValue = ref<string | null>(null);
@@ -220,12 +296,18 @@ const onSetInput = (field: (typeof setFields)[number], event: Event) => {
 };
 
 const searchExtraData = useDebounceFn(async (setNum: string) => {
-  if (!setNum) return;
+  if (!setNum) {
+    extraData.value = null;
+    return;
+  }
 
   const normalized = setNum.includes("-") ? setNum : `${setNum}-1`;
   await setsStore.getSet(normalized, true);
 
-  if (setSearchError.value) return; // no pises extraData si falló
+  if (setSearchError.value) {
+    extraData.value = null; // el set no existe: vuelve a habilitar los campos
+    return;
+  }
   extraData.value = setSearch.value;
 
   await getQuantity(normalized);
@@ -251,14 +333,16 @@ const onQuantityInput = (event: InputNumberInputEvent) => {
   typedQuantity.value = typeof event.value === "number" ? event.value : null;
 };
 
-const exceedsMax = computed(
-  () =>
-    typedQuantity.value != null &&
-    setPartQuantity.value != null &&
-    typedQuantity.value > setPartQuantity.value,
-);
+const disabledInput = (setField: string): boolean => {
+  if (isMinifigura.value) return true;
+  if (!extraData.value) return false;
+  return setField !== "set_num";
+};
 
 function cancelOperation() {
+  extraData.value = null;
+  minifigData.value = null;
+  setPartQuantity.value = null;
   dialogRef?.value.close();
 }
 
@@ -279,6 +363,16 @@ function createOperation() {
     return;
   }
 
+  if (isMinifigura.value && !extraData.value) {
+    toast.add({
+      severity: "error",
+      summary: "Falta Set",
+      detail: "Debes seleccionar el set donde está la minifigura",
+      life: 4000,
+    });
+    return;
+  }
+
   const data = {
     ...dialogRef?.value.data.data,
     ...(extraData.value ?? {}),
@@ -288,11 +382,14 @@ function createOperation() {
     cantidad: quantityValue.value,
   };
 
+  extraData.value = null;
+  minifigData.value = null;
+  setPartQuantity.value = null;
   dialogRef?.value.close(data);
 }
 
 onMounted(async () => {
-  if (!extraData.value) return;
+  if (!extraData.value || isMinifigura.value) return;
 
   const setNum = (extraData.value as SetInterface).set_num;
   const normalized = setNum.includes("-") ? setNum : `${setNum}-1`;
@@ -305,13 +402,25 @@ onMounted(async () => {
 .info-container,
 .extra-info {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   width: 100%;
   gap: 1rem;
+
+  &.piece {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.info-container {
+  grid-template-columns: minmax(0, 2.5fr) minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.extra-info {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
 .element-info,
 .set-info,
+.minifig-info,
 .extra-container,
 .imagenes-container {
   display: flex;
@@ -322,7 +431,8 @@ onMounted(async () => {
 
 .element-inputs,
 .set-inputs,
-.extra-inputs {
+.extra-inputs,
+.minifig-inputs {
   display: grid;
   align-items: center;
   gap: 2rem;
@@ -330,7 +440,8 @@ onMounted(async () => {
 }
 
 .element-inputs,
-.set-inputs {
+.set-inputs,
+.minifig-inputs {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 
   &.minifigura {
@@ -351,7 +462,8 @@ onMounted(async () => {
 .task-input,
 .pedido-input,
 .quantity-input,
-.completo-input {
+.completo-input,
+.minifig-input {
   display: flex;
   flex-direction: column;
   align-items: start;
@@ -380,7 +492,8 @@ onMounted(async () => {
   width: 100%;
 
   .element-img,
-  .set-img {
+  .set-img,
+  .minifig-img {
     width: 150px;
     height: 150px;
 
@@ -404,7 +517,7 @@ onMounted(async () => {
   display: none;
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1300px) {
   .info-container,
   .extra-info {
     display: flex;

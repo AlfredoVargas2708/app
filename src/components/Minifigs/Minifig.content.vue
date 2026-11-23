@@ -75,7 +75,7 @@
                 :total="setsTotal"
                 :first="setsFirst"
                 :rows="setsRows"
-                @page="onElementSetsPage"
+                @page="onSetMinifigPage"
               />
             </div>
           </template>
@@ -101,6 +101,7 @@ import AgregarModal from "../AgregarModal.vue";
 import type { DynamicDialogCloseOptions } from "primevue/dynamicdialogoptions";
 import { useDialog } from "primevue/usedialog";
 import type { DataTablePageEvent } from "primevue/datatable";
+import { useDatabaseStore } from "@/stores/database.store";
 
 const minifigStore = useMinifigStore();
 const {
@@ -123,6 +124,7 @@ const props = defineProps<{
 
 const searchValue = ref<string | null>(null);
 const dialog = useDialog();
+const databaseStore = useDatabaseStore();
 
 const onSearch = useDebounceFn(async () => {
   if (!searchValue.value) {
@@ -153,7 +155,7 @@ async function onSetPartsPage(event: DataTablePageEvent) {
   );
 }
 
-async function onElementSetsPage(event: DataTablePageEvent) {
+async function onSetMinifigPage(event: DataTablePageEvent) {
   const currentElement = minifig.value;
   if (!currentElement) return;
 
@@ -167,12 +169,17 @@ async function onElementSetsPage(event: DataTablePageEvent) {
 }
 
 function openAddModal(data: unknown) {
-  let dialogData: any = {};
+  const dialogData: any = {};
   if (data && typeof data === "object" && "element_id" in data) {
-    dialogData["extra"] = minifig.value;
+    const sets = minifigSets.value ?? [];
+
     dialogData["data"] = data;
     dialogData["set_editable"] = false;
     dialogData["minifigura"] = true;
+    dialogData["minifigData"] = minifig.value;
+    dialogData["setOptions"] = sets;
+    // Si hay un solo set se preselecciona; si hay varios, el usuario elige
+    dialogData["extra"] = sets.length === 1 ? sets[0] : null;
   }
 
   dialog.open(AgregarModal, {
@@ -180,18 +187,18 @@ function openAddModal(data: unknown) {
       header: "Agregar Pedido",
       style: {
         width: "80vw",
-        height: "90vh",
       },
       breakpoints: {
         "960px": "75vw",
         "640px": "90vw",
       },
       modal: true,
+      closable: false
     },
     data: dialogData,
-    onClose: (data: DynamicDialogCloseOptions) => {
-      if (data) {
-        console.log(data.data);
+    onClose: async (data: DynamicDialogCloseOptions) => {
+      if (data.data) {
+        await databaseStore.createOperation(data.data);
       }
     },
   });

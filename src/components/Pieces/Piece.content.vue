@@ -412,19 +412,17 @@ function openAddModal(data: Element | SetInterface) {
       header: "Agregar Pedido",
       style: {
         width: "80vw",
-        height: "90vh",
       },
       breakpoints: {
         "960px": "75vw",
         "640px": "90vw",
       },
       modal: true,
+      closable: false
     },
     data: dialogData,
     onClose: async (data: DynamicDialogCloseOptions) => {
       if (data.data) {
-        console.log("Creando pedido...");
-
         await databaseStore.createOperation(data.data);
       }
     },
