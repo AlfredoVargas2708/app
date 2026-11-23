@@ -25,25 +25,23 @@
 <script setup lang="ts">
 import type { Element } from "@/interfaces/element.interface";
 import type { DynamicDialogInstance } from "primevue/dynamicdialogoptions";
-import { computed, inject, ref, watch, type Ref } from "vue";
+import { computed, inject, ref, type Ref } from "vue";
 import Table from "../Table.vue";
 import type { DataTablePageEvent } from "primevue/datatable";
 import { useMinifigStore } from "@/stores/minifig.store";
 import { storeToRefs } from "pinia";
 import Skeleton from "primevue/skeleton";
-import { useToast } from "primevue/usetoast";
 import type Toast from "primevue/toast";
 
 const dialogRef = inject<Ref<DynamicDialogInstance>>("dialogRef");
 const data = ref<Element[]>(dialogRef?.value.data.parts ?? []);
 const setNum = computed<string>(() => dialogRef?.value.data.set_num);
 const minifigsStore = useMinifigStore();
-const { partsError, partsLoading } = storeToRefs(minifigsStore);
+const { partsLoading } = storeToRefs(minifigsStore);
 
 const first = ref<number>(0);
 const rows = ref<number>(5);
 const total = computed<number>(() => dialogRef?.value.data.total);
-const toast = useToast();
 
 async function changePartsPage(event: DataTablePageEvent) {
   first.value = event.first;
@@ -56,20 +54,6 @@ async function changePartsPage(event: DataTablePageEvent) {
       rows.value,
     )) ?? [];
 }
-
-watch(
-  () => [partsError.value],
-  ([error], [previousError]) => {
-    if (error && error !== previousError) {
-      toast.add({
-        severity: "error",
-        summary: "Error Al Obtener Piezas",
-        detail: "Hubo un error al buscar las piezas de la minifigura",
-        life: 4000,
-      });
-    }
-  },
-);
 </script>
 
 <style scoped></style>

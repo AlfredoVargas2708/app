@@ -2,12 +2,96 @@
 import { RouterView } from "vue-router";
 import DynamicDialog from "primevue/dynamicdialog";
 import Toast from "primevue/toast";
+import { watch, type Ref } from "vue";
+import { useElementStore } from "./stores/element.store";
+import { storeToRefs } from "pinia";
+import { useSetsStore } from "./stores/sets.store";
+import { useDatabaseStore } from "./stores/database.store";
+import { useToast } from "primevue/usetoast";
+
+const { elementError, partCategoriesError } = storeToRefs(useElementStore());
+const {
+  instructionsError,
+  setColorsError,
+  setMinifigsError,
+  setPartQuantityError,
+  setError,
+  setPartsError,
+  setMinifigs,
+  setParts,
+} = storeToRefs(useSetsStore());
+const { createError } = storeToRefs(useDatabaseStore());
+
+const toast = useToast();
+
+interface ErrorToast {
+  error: Ref<unknown>;
+  summary: string;
+  detail: string;
+  onError?: () => void; // limpieza opcional del estado
+}
+
+const errorToasts: ErrorToast[] = [
+  {
+    error: elementError,
+    summary: "Error Al Buscar Código",
+    detail: "No existe pieza con el código ingresado",
+  },
+  {
+    error: setError,
+    summary: "Error Al Buscar Set",
+    detail: "Hubo un error al encontrar el set.",
+  },
+  {
+    error: setMinifigsError,
+    summary: "Error Al Obtener Minifiguras",
+    detail: "Hubo un error al encontrar las minifiguras en el set.",
+    onError: () => (setMinifigs.value = null),
+  },
+  {
+    error: setPartsError,
+    summary: "Error Al Obtener Piezas",
+    detail: "Hubo un error al encontrar las piezas en el set.",
+    onError: () => (setParts.value = null),
+  },
+  {
+    error: setColorsError,
+    summary: "Error Al Obtener Colores Set",
+    detail: "Hubo un error al encontrar colores en el set.",
+  },
+  {
+    error: partCategoriesError,
+    summary: "Error Al Obtener Categorías",
+    detail: "Hubo un error al encontrar las categorías.",
+  },
+  {
+    error: createError,
+    summary: "Error Al Crear Pedido",
+    detail: "Error en creación de nuevo pedido",
+  },
+  {
+    error: instructionsError,
+    summary: "Error Al Obtener Instrucciones",
+    detail: "Hubo un error al encontrar las instrucciones del set.",
+  },
+  {
+    error: setPartQuantityError,
+    summary: "Error Al Buscar Cantidad Máxima Pieza En Set",
+    detail: "No se encontró el set que contiene la pieza",
+  },
+];
+
+errorToasts.forEach(({ error, summary, detail, onError }) => {
+  watch(error, (value) => {
+    if (!value) return;
+    onError?.();
+    toast.add({ severity: "error", summary, detail, life: 4000 });
+  });
+});
 </script>
 
 <template>
-  <RouterView> </RouterView>
+  <RouterView />
   <DynamicDialog />
   <Toast />
 </template>
-
-<style scoped></style>

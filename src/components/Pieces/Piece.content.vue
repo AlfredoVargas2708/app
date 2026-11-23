@@ -208,14 +208,11 @@ const props = defineProps<{
 const elementStore = useElementStore();
 const {
   elementLoading,
-  elementError,
   element,
   elementColorsLoading,
   elementColors,
   elementSets,
   elementSetsLoading,
-  elementColorsError,
-  elementSetsError,
   elementColorsTotal,
   elementSetsTotal,
   elementColorsFirst,
@@ -225,10 +222,9 @@ const {
   elementColorsSelect,
 } = storeToRefs(elementStore);
 const setsStore = useSetsStore();
-const { themesSet, themesError } = storeToRefs(setsStore);
+const { themesSet } = storeToRefs(setsStore);
 const filteredThemes = ref<ThemeInterface[] | null>(null);
 const databaseStore = useDatabaseStore();
-const { createError } = storeToRefs(databaseStore);
 
 const searchValue = ref<string | null>(null);
 const toast = useToast();
@@ -450,71 +446,6 @@ watch(
           elementSetsRows.value,
         );
       }, 600);
-    }
-  },
-);
-
-watch(
-  () => [
-    elementError.value,
-    elementColorsError.value,
-    elementSetsError.value,
-    themesError.value,
-    createError.value,
-  ],
-  (
-    [error, colorsError, setsError, themesError, createError],
-    [
-      previousError,
-      previousColorsError,
-      previousSetsError,
-      previousThemesError,
-      previousCreateError,
-    ],
-  ) => {
-    if (error && error !== previousError) {
-      toast.add({
-        severity: "error",
-        summary: "Error Al Buscar Código",
-        detail: "No existe pieza con el código ingresado",
-        life: 4000,
-      });
-    }
-    if (colorsError && colorsError !== previousColorsError) {
-      elementColors.value = null;
-      toast.add({
-        severity: "error",
-        summary: "Error Al Obtener Colores",
-        detail: "Error en la busqueda de colores de la pieza",
-        life: 4000,
-      });
-    }
-    if (themesError && themesError !== previousThemesError) {
-      themesSet.value = null;
-      toast.add({
-        severity: "error",
-        summary: "Error Al Obtener Colores",
-        detail: "Error en la busqueda de colores de la pieza",
-        life: 4000,
-      });
-    }
-    if (setsError && setsError !== previousSetsError) {
-      elementSets.value = null;
-      toast.add({
-        severity: "error",
-        summary: "Error Al Obtener Set",
-        detail: "Error en la busqueda de sets de la pieza",
-        life: 4000,
-      });
-    }
-    if (createError && createError !== previousCreateError) {
-      elementSets.value = null;
-      toast.add({
-        severity: "error",
-        summary: "Error Al Crear Pedido",
-        detail: "Error en creación de nuevo pedido",
-        life: 4000,
-      });
     }
   },
 );

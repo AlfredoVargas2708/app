@@ -94,7 +94,6 @@ import { useMinifigStore } from "@/stores/minifig.store";
 import { storeToRefs } from "pinia";
 import { useDebounceFn } from "@vueuse/core";
 import InputGroupAddon from "primevue/inputgroupaddon";
-import { useToast } from "primevue/usetoast";
 import Table from "../Table.vue";
 import Divider from "primevue/divider";
 import Skeleton from "primevue/skeleton";
@@ -106,16 +105,13 @@ import type { DataTablePageEvent } from "primevue/datatable";
 const minifigStore = useMinifigStore();
 const {
   minifig,
-  minifigError,
   minigifLoading,
-  partsError,
   partsLoading,
   partsFirst,
   partsRows,
   partsTotal,
   minifigParts,
   minifigSets,
-  setsError,
   setsFirst,
   setsLoading,
   setsRows,
@@ -126,7 +122,6 @@ const props = defineProps<{
 }>();
 
 const searchValue = ref<string | null>(null);
-const toast = useToast();
 const dialog = useDialog();
 
 const onSearch = useDebounceFn(async () => {
@@ -201,39 +196,6 @@ function openAddModal(data: unknown) {
     },
   });
 }
-
-watch(
-  () => [minifigError.value, partsError.value, setsError.value],
-  (
-    [error, partsError, setsError],
-    [previousError, previousPartError, previousSetsError],
-  ) => {
-    if (error && error !== previousError) {
-      toast.add({
-        severity: "error",
-        summary: "Error Al Buscar Código",
-        detail: "No existe minifigura con el código ingresado",
-        life: 4000,
-      });
-    }
-    if (partsError && partsError !== previousPartError) {
-      toast.add({
-        severity: "error",
-        summary: "Error Al Buscar Piezas",
-        detail: "Hubo un error al buscar las piezas de la minifigura",
-        life: 4000,
-      });
-    }
-    if (setsError && setsError !== previousSetsError) {
-      toast.add({
-        severity: "error",
-        summary: "Error Al Buscar Sets",
-        detail: "Hubo un error al buscar los sets con la minifigura",
-        life: 4000,
-      });
-    }
-  },
-);
 
 watch(
   () => props.tabValue,

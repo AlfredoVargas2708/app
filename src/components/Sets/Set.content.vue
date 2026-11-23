@@ -151,7 +151,6 @@ import { ref, watch } from "vue";
 import Spinner from "@primeicons/vue/spinner";
 import Table from "../Table.vue";
 import Divider from "primevue/divider";
-import { useToast } from "primevue/usetoast";
 import Skeleton from "primevue/skeleton";
 import type { DataTablePageEvent } from "primevue/datatable";
 import type { Element } from "@/interfaces/element.interface";
@@ -162,6 +161,7 @@ import { type ColorSet } from "@/interfaces/color.interface";
 import { useElementStore } from "@/stores/element.store";
 import AgregarModal from "../AgregarModal.vue";
 import type { DynamicDialogCloseOptions } from "primevue/dynamicdialogoptions";
+import { useDatabaseStore } from "@/stores/database.store";
 
 const props = defineProps<{
   tabValue: string;
@@ -170,28 +170,24 @@ const props = defineProps<{
 const setStore = useSetsStore();
 const {
   setData,
-  setError,
   setLoading,
   setMinifigs,
-  setMinifigsError,
   setMinifigsLoading,
   setMinifigsRows,
   setMinifigsFirst,
   setMinifigsTotal,
   setParts,
-  setPartsError,
   setPartsFirst,
   setPartsLoading,
   setPartsRows,
   setPartsTotal,
   setColors,
-  setColorsError,
 } = storeToRefs(setStore);
 const elementStore = useElementStore();
-const { partCategories, partCategoriesError } = storeToRefs(elementStore);
+const { partCategories } = storeToRefs(elementStore);
+const databaseStore = useDatabaseStore();
 
 const searchValue = ref<string | null>(null);
-const toast = useToast();
 const dialog = useDialog();
 const colorSelected = ref<ColorSet | null>(null);
 const partCatIdSelected = ref<number | null>(null);
@@ -374,9 +370,10 @@ function openAddModal(data: unknown) {
     dialogData["extra"] = setData.value;
     dialogData["data"] = data;
     dialogData["set_editable"] = false;
+  } else {
+    dialogData["data"] = data;
+    dialogData["set_editable"] = true;
   }
-
-  console.log(dialogData)
 
   dialog.open(AgregarModal, {
     props: {
@@ -392,8 +389,12 @@ function openAddModal(data: unknown) {
       modal: true,
     },
     data: dialogData,
-    onClose: (data: DynamicDialogCloseOptions) => {
-      console.log(data.data);
+    onClose: async (data: DynamicDialogCloseOptions) => {
+      if (data.data) {
+        console.log("Creando pedido...");
+
+        await databaseStore.createOperation(data.data);
+      }
     },
   });
 }
@@ -406,72 +407,6 @@ watch(
       searchValue.value = null;
       setMinifigs.value = null;
       setParts.value = null;
-    }
-  },
-);
-
-watch(
-  () => [
-    setError.value,
-    setMinifigsError.value,
-    setPartsError.value,
-    setColorsError.value,
-    partCategoriesError.value,
-  ],
-  (
-    [error, minifigsError, partsError, colorsError, partCategoriesError],
-    [
-      previousError,
-      previousMinifigsError,
-      previousPartsError,
-      previousColorsError,
-      previousPartCategoriesError,
-    ],
-  ) => {
-    if (error && error !== previousError) {
-      toast.add({
-        severity: "error",
-        summary: "Error Al Buscar Código",
-        detail: "No existe set con el código ingresado",
-        life: 4000,
-      });
-    }
-    if (minifigsError && minifigsError !== previousMinifigsError) {
-      setMinifigs.value = null;
-      toast.add({
-        severity: "error",
-        summary: "Error Al Obtener Minifiguras",
-        detail: "Hubo un error al encontrar las minifiguras en el set.",
-        life: 4000,
-      });
-    }
-    if (partsError && partsError !== previousPartsError) {
-      setParts.value = null;
-      toast.add({
-        severity: "error",
-        summary: "Error Al Obtener Minifiguras",
-        detail: "Hubo un error al encontrar las piezas en el set.",
-        life: 4000,
-      });
-    }
-    if (colorsError && colorsError !== previousColorsError) {
-      toast.add({
-        severity: "error",
-        summary: "Error Al Obtener Colores Set",
-        detail: "Hubo un error al encontrar colores en el set.",
-        life: 4000,
-      });
-    }
-    if (
-      partCategoriesError &&
-      partCategoriesError !== previousPartCategoriesError
-    ) {
-      toast.add({
-        severity: "error",
-        summary: "Error Al Obtener Categorias",
-        detail: "Hubo un error al encontrar las categorias.",
-        life: 4000,
-      });
     }
   },
 );
