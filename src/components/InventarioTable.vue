@@ -12,6 +12,8 @@ import type { Operation } from "@/interfaces/database.interface";
 import { Pencil, Check, ShoppingCart, Trash, Search } from "@primeicons/vue";
 import InputGroup from "primevue/inputgroup";
 import InputGroupAddon from "primevue/inputgroupaddon";
+import { storeToRefs } from "pinia";
+import { useDatabaseStore } from "@/stores/database.store";
 
 const props = defineProps<{
   items: Operation[];
@@ -29,6 +31,7 @@ const emit = defineEmits<{
     items: Operation[],
     patch: Partial<Pick<Operation, "pedido" | "completo">>,
   ): void;
+  (e: "sort"): void;
 }>();
 
 /* ---------- Responsive ---------- */
@@ -49,6 +52,7 @@ if (typeof window !== "undefined") {
 const selected = ref<Operation[]>([]);
 const hasSelection = computed(() => selected.value.length > 0);
 const single = computed(() => selected.value.length === 1);
+const { sortField, sortOrder } = storeToRefs(useDatabaseStore());
 
 /* ---------- Filtro global ---------- */
 
@@ -123,6 +127,17 @@ const onRowDblClick = (e: { data: Operation }) => emit("edit", e.data);
 
 const onSort = (event: DataTableSortEvent) => {
   console.log(event);
+
+  if (
+    typeof event.sortField === "string" &&
+    typeof event.sortOrder === "number"
+  ) {
+    sortField.value = event.sortField;
+    sortOrder.value =
+      event.sortOrder === 1 ? "ASC" : event.sortOrder === -1 ? "DESC" : null;
+
+    emit("sort");
+  }
 };
 </script>
 
@@ -196,15 +211,30 @@ const onSort = (event: DataTableSortEvent) => {
         :rows-per-page-options="[5, 10, 15, 30, 50]"
         row-hover
         size="small"
-        removable-sort
         @row-dblclick="onRowDblClick"
         @sort="onSort($event)"
+        lazy
+        :sort-field="sortField ?? ''"
+        :sort-order="sortOrder === 'ASC' ? 1 : sortOrder === 'DESC' ? -1 : 0"
       >
         <template #empty>No hay piezas que coincidan con tu búsqueda.</template>
 
         <Column selection-mode="multiple" header-style="width: 3rem" />
 
-        <Column header="Pieza" field="element_name" style="min-width: 18rem">
+        <Column
+          sortable
+          header="Código Pieza"
+          field="element_id"
+          style="min-width: 7rem"
+        />
+
+        <Column
+          header="Pieza"
+          field="element_name"
+          sortable
+          sort-field="element_name"
+          style="min-width: 18rem"
+        >
           <template #body="{ data }">
             <div class="op-cell">
               <span @click.stop>
@@ -225,7 +255,6 @@ const onSort = (event: DataTableSortEvent) => {
                 >
                   {{ data.element_name }}
                 </a>
-                <span class="op-muted">{{ data.element_id }}</span>
               </div>
             </div>
           </template>
@@ -246,7 +275,13 @@ const onSort = (event: DataTableSortEvent) => {
           </template>
         </Column>
 
-        <Column header="Set" field="name" sortable style="min-width: 16rem">
+        <Column
+          header="Set"
+          field="name"
+          sortable
+          sort-field="name"
+          style="min-width: 16rem"
+        >
           <template #body="{ data }">
             <div class="op-cell">
               <span @click.stop>
@@ -267,11 +302,17 @@ const onSort = (event: DataTableSortEvent) => {
                 >
                   {{ data.name }}
                 </a>
-                <span class="op-muted">{{ data.set_num }}</span>
               </div>
             </div>
           </template>
         </Column>
+
+        <Column
+          header="Código Set"
+          field="set_num"
+          sortable
+          style="min-width: 7rem"
+        />
 
         <Column
           header="Cant."
@@ -285,21 +326,21 @@ const onSort = (event: DataTableSortEvent) => {
           header="Tema Set"
           field="theme_name"
           sortable
-          style="width: 8rem"
+          style="width: 10rem"
         />
 
         <Column
           header="Categoría Pieza"
           field="part_cat_name"
           sortable
-          style="width: 12rem"
+          style="width: 15rem"
         />
 
         <Column
-          header="N° Pieza Set"
+          header="N° Piezas"
           field="num_parts"
           sortable
-          style="width: 8rem"
+          style="width: 10rem"
           body-class="op-num"
         />
 

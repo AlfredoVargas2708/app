@@ -26,6 +26,7 @@
           :first="inventarioFisrt"
           :rows="inventarioRows"
           :total="inventarioTotal"
+          @sort="getOperations"
         />
       </div>
     </div>
@@ -55,8 +56,12 @@ function goBack() {
   router.back();
 }
 
-onMounted(async () => {
+function getOperations() {
   databaseStore.getOperations();
+}
+
+onMounted(async () => {
+  getOperations();
 });
 </script>
 

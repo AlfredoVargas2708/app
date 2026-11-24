@@ -14,6 +14,8 @@ export const useDatabaseStore = defineStore("database", () => {
   const inventarioRows = ref<number>(5);
   const inventarioFisrt = ref<number>(0);
   const inventarioTotal = ref<number>(1);
+  const sortField = ref<string | null>(null);
+  const sortOrder = ref<string | null>(null);
 
   async function createOperation(body: unknown) {
     createSuccess.value = false;
@@ -32,6 +34,9 @@ export const useDatabaseStore = defineStore("database", () => {
     try {
       const { data } = await axios.get<{ count: number; rows: Operation[] }>(
         `${URL}/database`,
+        {
+          params: { sortField: sortField.value, sortOrder: sortOrder.value },
+        },
       );
 
       inventario.value = data.rows;
@@ -54,5 +59,7 @@ export const useDatabaseStore = defineStore("database", () => {
     inventarioRows,
     inventarioFisrt,
     inventarioTotal,
+    sortField,
+    sortOrder,
   };
 });
