@@ -1,19 +1,22 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { FilterMatchMode } from "@primevue/core/api";
-import DataTable, { type DataTableSortEvent } from "primevue/datatable";
+import DataTable, {
+  type DataTableFilterEvent,
+  type DataTableFilterMetaData,
+  type DataTableSortEvent,
+} from "primevue/datatable";
 import Column from "primevue/column";
-import Tag from "primevue/tag";
 import Button from "primevue/button";
 import InputText from "primevue/inputtext";
 import Image from "primevue/image";
 import Checkbox from "primevue/checkbox";
+import InputNumber from "primevue/inputnumber";
 import type { Operation } from "@/interfaces/database.interface";
-import { Pencil, Check, ShoppingCart, Trash, Search } from "@primeicons/vue";
-import InputGroup from "primevue/inputgroup";
-import InputGroupAddon from "primevue/inputgroupaddon";
+import { Pencil, Check, ShoppingCart, Trash } from "@primeicons/vue";
 import { storeToRefs } from "pinia";
 import { useDatabaseStore } from "@/stores/database.store";
+import { useDebounceFn } from "@vueuse/core";
 
 const props = defineProps<{
   items: Operation[];
@@ -32,6 +35,7 @@ const emit = defineEmits<{
     patch: Partial<Pick<Operation, "pedido" | "completo">>,
   ): void;
   (e: "sort"): void;
+  (e: "filter"): void;
 }>();
 
 /* ---------- Responsive ---------- */
@@ -47,50 +51,58 @@ if (typeof window !== "undefined") {
   updateView();
 }
 
-/* ---------- Selección ---------- */
+/* ---------- Selección y Store ---------- */
 
 const selected = ref<Operation[]>([]);
 const hasSelection = computed(() => selected.value.length > 0);
 const single = computed(() => selected.value.length === 1);
-const { sortField, sortOrder } = storeToRefs(useDatabaseStore());
+const { sortField, sortOrder, columnFilters } = storeToRefs(useDatabaseStore());
 
-/* ---------- Filtro global ---------- */
+/* ---------- Filtros por columna ---------- */
 
-const filters = ref({
-  global: { value: null as string | null, matchMode: FilterMatchMode.CONTAINS },
-});
-const globalFields = [
+const filterFields = [
+  "element_id",
   "element_name",
+  "color_name",
   "name",
   "set_num",
-  "element_id",
-  "color_name",
+  "cantidad",
   "theme_name",
   "part_cat_name",
   "num_parts",
-];
+] as const;
 
-/* ---------- Filtrado de items ---------- */
+const filters = ref(
+  Object.fromEntries(
+    filterFields.map((f) => [
+      f,
+      {
+        value: (columnFilters.value[f] ?? null) as string | null,
+        matchMode: FilterMatchMode.CONTAINS,
+      },
+    ]),
+  ),
+);
 
-const filteredItems = computed(() => {
-  if (!filters.value.global.value) return props.items;
+const isMetaData = (model: unknown): model is DataTableFilterMetaData =>
+  typeof model === "object" && model !== null && "value" in model;
 
-  const searchTerm = filters.value.global.value.toLowerCase();
-  return props.items.filter((item) =>
-    globalFields.some((field) => {
-      const value = item[field as keyof Operation];
-      return value && String(value).toLowerCase().includes(searchTerm);
-    }),
-  );
-});
+const emitFilter = useDebounceFn((event: DataTableFilterEvent) => {
+  const next: Record<string, string> = {};
 
-/* ---------- Estado ---------- */
+  for (const [field, model] of Object.entries(event.filters ?? {})) {
+    if (field === "global") continue;
+    if (!isMetaData(model)) continue;
 
-const status = (i: Operation) => {
-  if (i.completo) return { label: "Completo", severity: "success" as const };
-  if (i.pedido) return { label: "Pedido", severity: "info" as const };
-  return { label: "Sin pedir", severity: "secondary" as const };
-};
+    const value = model.value == null ? "" : String(model.value).trim();
+    if (value) next[field] = value;
+  }
+
+  if (JSON.stringify(next) === JSON.stringify(columnFilters.value)) return;
+
+  columnFilters.value = next;
+  emit("filter");
+}, 500);
 
 /* ---------- Acciones ---------- */
 
@@ -118,16 +130,28 @@ const isSelected = (item: Operation) => {
   return selected.value.some((s) => s.operation_id === item.operation_id);
 };
 
-const onDelete = () => emit("delete", [...selected.value]);
-const onStatus = (patch: Partial<Pick<Operation, "pedido" | "completo">>) =>
-  emit("update-status", [...selected.value], patch);
+const onDelete = (itemsToDelete: Operation[] = [...selected.value]) => {
+  emit("delete", itemsToDelete);
+};
 
-// El diálogo de edición también se abre con doble clic en la fila
+const onStatus = (
+  targets: Operation[],
+  patch: Partial<Pick<Operation, "pedido" | "completo">>,
+) => {
+  emit("update-status", targets, patch);
+};
+
+const onToggleRowStatus = (
+  item: Operation,
+  field: "pedido" | "completo",
+  value: boolean,
+) => {
+  onStatus([item], { [field]: value });
+};
+
 const onRowDblClick = (e: { data: Operation }) => emit("edit", e.data);
 
 const onSort = (event: DataTableSortEvent) => {
-  console.log(event);
-
   if (
     typeof event.sortField === "string" &&
     typeof event.sortOrder === "number"
@@ -146,50 +170,34 @@ const onSort = (event: DataTableSortEvent) => {
     <!-- Barra de acciones -->
     <div class="op-toolbar">
       <div class="op-toolbar-left">
-        <Button :disabled="!single" @click="onEdit" severity="success">
-          <span class="text-base">Editar</span>
-          <Pencil :size="20" />
-        </Button>
         <Button
-          severity="secondary"
-          outlined
-          :disabled="!hasSelection"
-          @click="onStatus({ pedido: true })"
-          class="text-base"
+          :disabled="!single"
+          @click="onEdit"
+          severity="success"
+          size="small"
         >
-          <span class="text-base">Marcar Pedido</span>
-          <ShoppingCart :size="20" />
+          <Pencil :size="16" />
+          <span class="font-medium">Editar</span>
         </Button>
-        <Button
-          label="Marcar completo"
-          severity="secondary"
-          outlined
-          :disabled="!hasSelection"
-          @click="onStatus({ pedido: true, completo: true })"
-          class="text-base"
-        >
-          <span class="text-base">Marcar Completo</span>
-          <Check :size="20"
-        /></Button>
         <Button
           severity="danger"
           outlined
           :disabled="!hasSelection"
-          @click="onDelete"
-          class="text-base"
+          @click="onDelete()"
+          size="small"
         >
-          <span class="text-base">Eliminar</span>
-          <Trash :size="20" />
+          <Trash :size="16" />
+          <span class="font-medium">
+            Eliminar{{ hasSelection ? ` (${selected.length})` : "" }}
+          </span>
         </Button>
       </div>
 
-      <div class="op-toolbar-right">
-        <InputGroup :style="{ 'max-width': '250px' }">
-          <InputGroupAddon>
-            <Search :size="20" />
-          </InputGroupAddon>
-          <InputText v-model="filters.global.value" placeholder="Buscar" />
-        </InputGroup>
+      <div v-if="hasSelection" class="op-toolbar-right">
+        <span class="op-selection-badge">
+          {{ selected.length }}
+          {{ selected.length === 1 ? "seleccionado" : "seleccionados" }}
+        </span>
       </div>
     </div>
 
@@ -200,7 +208,6 @@ const onSort = (event: DataTableSortEvent) => {
         v-model:filters="filters"
         :value="props.items"
         :loading="loading"
-        :global-filter-fields="globalFields"
         data-key="operation_id"
         selection-mode="multiple"
         :meta-key-selection="false"
@@ -210,34 +217,65 @@ const onSort = (event: DataTableSortEvent) => {
         :total-records="total"
         :rows-per-page-options="[5, 10, 15, 30, 50]"
         row-hover
+        striped-rows
         size="small"
         @row-dblclick="onRowDblClick"
         @sort="onSort($event)"
+        @filter="emitFilter"
         lazy
         :sort-field="sortField ?? ''"
         :sort-order="sortOrder === 'ASC' ? 1 : sortOrder === 'DESC' ? -1 : 0"
+        filter-display="row"
       >
-        <template #empty>No hay piezas que coincidan con tu búsqueda.</template>
+        <template #empty>
+          <div class="op-empty-table">
+            No hay piezas que coincidan con tu búsqueda.
+          </div>
+        </template>
 
-        <Column selection-mode="multiple" header-style="width: 3rem" />
+        <Column
+          selection-mode="multiple"
+          header-style="width: 3rem"
+          body-class="op-center"
+        />
 
         <Column
           sortable
-          header="Código Pieza"
+          header="Código"
           field="element_id"
-          style="min-width: 7rem"
-        />
+          style="min-width: 7.5rem"
+          body-class="op-mono"
+          filter
+          :show-filter-menu="false"
+        >
+          <template #filter="{ filterModel, filterCallback }">
+            <InputText
+              :model-value="filterModel.value"
+              @update:model-value="
+                (value) => {
+                  filterModel.value = value;
+                  filterCallback();
+                }
+              "
+              size="small"
+              placeholder="Filtrar"
+              fluid
+            />
+          </template>
+        </Column>
 
         <Column
           header="Pieza"
           field="element_name"
           sortable
           sort-field="element_name"
-          style="min-width: 18rem"
+          style="min-width: 16rem"
+          filter
+          :show-filter-menu="false"
         >
           <template #body="{ data }">
             <div class="op-cell">
-              <span @click.stop>
+              <span @click.stop @dblclick.stop>
                 <Image
                   :src="data.element_img_url"
                   :alt="data.element_name"
@@ -255,8 +293,23 @@ const onSort = (event: DataTableSortEvent) => {
                 >
                   {{ data.element_name }}
                 </a>
+                <span class="op-subtext">#{{ data.element_id }}</span>
               </div>
             </div>
+          </template>
+          <template #filter="{ filterModel, filterCallback }">
+            <InputText
+              :model-value="filterModel.value"
+              @update:model-value="
+                (value) => {
+                  filterModel.value = value;
+                  filterCallback();
+                }
+              "
+              size="small"
+              placeholder="Filtrar"
+              fluid
+            />
           </template>
         </Column>
 
@@ -264,14 +317,32 @@ const onSort = (event: DataTableSortEvent) => {
           header="Color"
           field="color_name"
           sortable
-          style="min-width: 11rem"
+          style="min-width: 11.5rem"
+          filter
+          :show-filter-menu="false"
         >
           <template #body="{ data }">
-            <span
-              class="op-swatch"
-              :style="{ backgroundColor: `#${data.color_rgb}` }"
+            <div class="op-color-cell">
+              <span
+                class="op-swatch"
+                :style="{ backgroundColor: `#${data.color_rgb}` }"
+              />
+              <span class="op-truncate">{{ data.color_name }}</span>
+            </div>
+          </template>
+          <template #filter="{ filterModel, filterCallback }">
+            <InputText
+              :model-value="filterModel.value"
+              @update:model-value="
+                (value) => {
+                  filterModel.value = value;
+                  filterCallback();
+                }
+              "
+              size="small"
+              placeholder="Filtrar"
+              fluid
             />
-            {{ data.color_name }}
           </template>
         </Column>
 
@@ -281,10 +352,12 @@ const onSort = (event: DataTableSortEvent) => {
           sortable
           sort-field="name"
           style="min-width: 16rem"
+          filter
+          :show-filter-menu="false"
         >
           <template #body="{ data }">
             <div class="op-cell">
-              <span @click.stop>
+              <span @click.stop @dblclick.stop>
                 <Image
                   :src="data.set_img_url"
                   :alt="data.name"
@@ -302,54 +375,214 @@ const onSort = (event: DataTableSortEvent) => {
                 >
                   {{ data.name }}
                 </a>
+                <span class="op-subtext">{{ data.set_num }}</span>
               </div>
             </div>
+          </template>
+          <template #filter="{ filterModel, filterCallback }">
+            <InputText
+              :model-value="filterModel.value"
+              @update:model-value="
+                (value) => {
+                  filterModel.value = value;
+                  filterCallback();
+                }
+              "
+              size="small"
+              placeholder="Filtrar"
+              fluid
+            />
           </template>
         </Column>
 
         <Column
-          header="Código Set"
+          header="Cód. Set"
           field="set_num"
           sortable
-          style="min-width: 7rem"
-        />
+          style="min-width: 8rem"
+          body-class="op-mono"
+          filter
+          :show-filter-menu="false"
+        >
+          <template #filter="{ filterModel, filterCallback }">
+            <InputText
+              :model-value="filterModel.value"
+              @update:model-value="
+                (value) => {
+                  filterModel.value = value;
+                  filterCallback();
+                }
+              "
+              size="small"
+              placeholder="Filtrar"
+              fluid
+            />
+          </template>
+        </Column>
 
         <Column
           header="Cant."
           field="cantidad"
           sortable
-          style="width: 6rem"
-          body-class="op-num"
-        />
+          style="width: 6.5rem"
+          header-class="op-right-header"
+          body-class="op-num op-right"
+          filter
+          :show-filter-menu="false"
+        >
+          <template #filter="{ filterModel, filterCallback }">
+            <InputText
+              :model-value="filterModel.value"
+              @update:model-value="
+                (value) => {
+                  filterModel.value = value;
+                  filterCallback();
+                }
+              "
+              size="small"
+              placeholder="Filtrar"
+              fluid
+            />
+          </template>
+        </Column>
 
         <Column
-          header="Tema Set"
+          header="Tema"
           field="theme_name"
           sortable
-          style="width: 10rem"
-        />
+          style="min-width: 10.5rem"
+          filter
+          :show-filter-menu="false"
+        >
+          <template #filter="{ filterModel, filterCallback }">
+            <InputText
+              :model-value="filterModel.value"
+              @update:model-value="
+                (value) => {
+                  filterModel.value = value;
+                  filterCallback();
+                }
+              "
+              size="small"
+              placeholder="Filtrar"
+              fluid
+            />
+          </template>
+        </Column>
 
         <Column
-          header="Categoría Pieza"
+          header="Categoría"
           field="part_cat_name"
           sortable
-          style="width: 15rem"
-        />
+          style="min-width: 13rem"
+          filter
+          :show-filter-menu="false"
+        >
+          <template #filter="{ filterModel, filterCallback }">
+            <InputText
+              :model-value="filterModel.value"
+              @update:model-value="
+                (value) => {
+                  filterModel.value = value;
+                  filterCallback();
+                }
+              "
+              size="small"
+              placeholder="Filtrar"
+              fluid
+            />
+          </template>
+        </Column>
 
         <Column
           header="N° Piezas"
           field="num_parts"
           sortable
-          style="width: 10rem"
-          body-class="op-num"
-        />
+          style="min-width: 13rem"
+          header-class="op-right-header"
+          body-class="op-num op-right"
+          filter
+          :show-filter-menu="false"
+        >
+          <template #filter="{ filterModel, filterCallback }">
+            <div class="op-range-filter">
+              <InputNumber
+                :model-value="filterModel.value?.min ?? null"
+                @update:model-value="
+                  (val) => {
+                    filterModel.value = {
+                      ...(filterModel.value ?? {}),
+                      min: val,
+                    };
+                    filterCallback();
+                  }
+                "
+                placeholder="Mín"
+                :min="0"
+                :useGrouping="false"
+                size="small"
+                fluid
+              />
+              <InputNumber
+                :model-value="filterModel.value?.max ?? null"
+                @update:model-value="
+                  (val) => {
+                    filterModel.value = {
+                      ...(filterModel.value ?? {}),
+                      max: val,
+                    };
+                    filterCallback();
+                  }
+                "
+                placeholder="Máx"
+                :min="0"
+                :useGrouping="false"
+                size="small"
+                fluid
+              />
+            </div>
+          </template>
+        </Column>
 
-        <Column header="Estado" style="width: 8rem">
+        <Column
+          header="Pedido"
+          field="pedido"
+          sortable
+          style="width: 5.5rem"
+          header-class="op-center-header"
+          body-class="op-center"
+        >
           <template #body="{ data }">
-            <Tag
-              :value="status(data).label"
-              :severity="status(data).severity"
-            />
+            <span @click.stop @dblclick.stop>
+              <Checkbox
+                :model-value="Boolean(data.pedido)"
+                :binary="true"
+                @update:model-value="
+                  (val: boolean) => onToggleRowStatus(data, 'pedido', val)
+                "
+              />
+            </span>
+          </template>
+        </Column>
+
+        <Column
+          header="Completo"
+          field="completo"
+          sortable
+          style="width: 6rem"
+          header-class="op-center-header"
+          body-class="op-center"
+        >
+          <template #body="{ data }">
+            <span @click.stop @dblclick.stop>
+              <Checkbox
+                :model-value="Boolean(data.completo)"
+                :binary="true"
+                @update:model-value="
+                  (val: boolean) => onToggleRowStatus(data, 'completo', val)
+                "
+              />
+            </span>
           </template>
         </Column>
       </DataTable>
@@ -357,17 +590,16 @@ const onSort = (event: DataTableSortEvent) => {
 
     <!-- Vista de Cards (Mobile) -->
     <div v-if="isMobile" class="op-cards-container">
-      <div v-if="filteredItems.length === 0" class="op-empty-state">
+      <div v-if="props.items.length === 0" class="op-empty-state">
         No hay piezas que coincidan con tu búsqueda.
       </div>
 
       <div
-        v-for="item in filteredItems"
+        v-for="item in props.items"
         :key="item.operation_id"
         class="op-card"
         :class="{ 'op-card-selected': isSelected(item) }"
       >
-        <!-- Encabezado con checkbox y estado -->
         <div class="op-card-header">
           <div class="op-card-select">
             <Checkbox
@@ -375,13 +607,34 @@ const onSort = (event: DataTableSortEvent) => {
               :binary="true"
               @update:model-value="() => onToggleSelection(item)"
             />
+            <span class="op-card-id">#{{ item.element_id }}</span>
           </div>
-          <Tag :value="status(item).label" :severity="status(item).severity" />
+
+          <div class="op-card-statuses">
+            <label class="op-status-toggle">
+              <Checkbox
+                :model-value="Boolean(item.pedido)"
+                :binary="true"
+                @update:model-value="
+                  (val: boolean) => onToggleRowStatus(item, 'pedido', val)
+                "
+              />
+              <span>Pedido</span>
+            </label>
+            <label class="op-status-toggle">
+              <Checkbox
+                :model-value="Boolean(item.completo)"
+                :binary="true"
+                @update:model-value="
+                  (val: boolean) => onToggleRowStatus(item, 'completo', val)
+                "
+              />
+              <span>Completo</span>
+            </label>
+          </div>
         </div>
 
-        <!-- Contenido principal -->
         <div class="op-card-content">
-          <!-- Pieza -->
           <div class="op-card-section">
             <h4 class="op-card-label">Pieza</h4>
             <div class="op-card-item-row">
@@ -403,12 +656,11 @@ const onSort = (event: DataTableSortEvent) => {
                 >
                   {{ item.element_name }}
                 </a>
-                <span class="op-muted">{{ item.element_id }}</span>
+                <span class="op-subtext">Código: {{ item.element_id }}</span>
               </div>
             </div>
           </div>
 
-          <!-- Set -->
           <div class="op-card-section">
             <h4 class="op-card-label">Set</h4>
             <div class="op-card-item-row">
@@ -430,12 +682,11 @@ const onSort = (event: DataTableSortEvent) => {
                 >
                   {{ item.name }}
                 </a>
-                <span class="op-muted">{{ item.set_num }}</span>
+                <span class="op-subtext">{{ item.set_num }}</span>
               </div>
             </div>
           </div>
 
-          <!-- Detalles en dos columnas -->
           <div class="op-card-details">
             <div class="op-card-detail">
               <span class="op-card-label">Color</span>
@@ -444,7 +695,7 @@ const onSort = (event: DataTableSortEvent) => {
                   class="op-swatch"
                   :style="{ backgroundColor: `#${item.color_rgb}` }"
                 />
-                {{ item.color_name }}
+                <span>{{ item.color_name }}</span>
               </div>
             </div>
             <div class="op-card-detail">
@@ -456,70 +707,53 @@ const onSort = (event: DataTableSortEvent) => {
               <span>{{ item.theme_name }}</span>
             </div>
             <div class="op-card-detail">
-              <span class="op-card-label">N° Pieza Set</span>
+              <span class="op-card-label">N° Piezas Set</span>
               <span class="op-num">{{ item.num_parts }}</span>
             </div>
-            <div class="op-card-detail">
+            <div class="op-card-detail op-card-detail-full">
               <span class="op-card-label">Categoría Pieza</span>
               <span>{{ item.part_cat_name }}</span>
             </div>
           </div>
         </div>
 
-        <!-- Acciones del card -->
         <div class="op-card-actions">
           <Button
-            icon="pi pi-pencil"
             severity="success"
             outlined
             size="small"
             @click="onEditCard(item)"
           >
-            <Pencil />
-            <span class="text-base pl-2">Editar</span></Button
-          >
+            <Pencil :size="15" />
+            <span>Editar</span>
+          </Button>
           <Button
             severity="secondary"
             outlined
             size="small"
-            @click="
-              () => {
-                selected = [item];
-                onStatus({ pedido: true });
-              }
-            "
+            @click="onStatus([item], { pedido: true })"
           >
-            <ShoppingCart />
-            <span class="text-base pl-2">Marcar como pedido</span></Button
-          >
+            <ShoppingCart :size="15" />
+            <span>Pedido</span>
+          </Button>
           <Button
             severity="secondary"
             outlined
             size="small"
-            @click="
-              () => {
-                selected = [item];
-                onStatus({ pedido: true, completo: true });
-              }
-            "
+            @click="onStatus([item], { pedido: true, completo: true })"
           >
-            <Check />
-            <span class="text-base">Marcar como completo</span></Button
-          >
+            <Check :size="15" />
+            <span>Completo</span>
+          </Button>
           <Button
             severity="danger"
             outlined
             size="small"
-            @click="
-              () => {
-                selected = [item];
-                onDelete();
-              }
-            "
+            @click="onDelete([item])"
           >
-            <Trash />
-            <span class="text-base">Eliminar</span></Button
-          >
+            <Trash :size="15" />
+            <span>Eliminar</span>
+          </Button>
         </div>
       </div>
     </div>
@@ -527,7 +761,7 @@ const onSort = (event: DataTableSortEvent) => {
 </template>
 
 <style scoped>
-/* ========== Vista Desktop (Tabla) ========== */
+/* ========== Barra de acciones ========== */
 
 .op-toolbar {
   display: flex;
@@ -535,20 +769,103 @@ const onSort = (event: DataTableSortEvent) => {
   gap: 0.75rem 1rem;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.875rem;
 }
 
 .op-toolbar-left,
 .op-toolbar-right {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.5rem;
-  min-width: 450px;
 }
 
-.op-toolbar-right {
-  justify-content: end;
+.op-selection-badge {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--p-text-muted-color);
+  background: var(--p-surface-100);
+  border: 1px solid var(--p-content-border-color);
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
 }
+
+:global(.p-dark) .op-selection-badge {
+  background: var(--p-surface-800);
+}
+
+/* ========== Contenedor y tabla (Desktop) ========== */
+
+.op-table-container {
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 0.625rem;
+  background: var(--p-surface-0);
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+:global(.p-dark) .op-table-container {
+  background: var(--p-surface-900);
+  box-shadow: none;
+}
+
+:deep(.p-datatable-thead > tr > th) {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--p-text-color);
+  background: var(--p-surface-50);
+  padding-top: 0.625rem;
+  padding-bottom: 0.625rem;
+  vertical-align: middle;
+}
+
+:global(.p-dark) :deep(.p-datatable-thead > tr > th) {
+  background: var(--p-surface-800);
+}
+
+:deep(.p-datatable-tbody > tr > td) {
+  padding-top: 0.55rem;
+  padding-bottom: 0.55rem;
+  vertical-align: middle;
+  font-size: 0.875rem;
+}
+
+:deep(.op-center-header .p-datatable-column-header-content) {
+  justify-content: center;
+}
+
+:deep(.op-right-header .p-datatable-column-header-content) {
+  justify-content: flex-end;
+}
+
+:deep(.op-center) {
+  text-align: center;
+}
+
+:deep(.op-right) {
+  text-align: right;
+}
+
+:deep(.op-mono) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8125rem;
+  color: var(--p-text-muted-color);
+}
+
+.op-empty-table {
+  padding: 2.5rem 1rem;
+  text-align: center;
+  color: var(--p-text-muted-color);
+  font-size: 0.9375rem;
+}
+
+.op-range-filter {
+  display: flex;
+  gap: 0.375rem;
+  align-items: center;
+}
+
+/* ========== Celdas ========== */
 
 .op-cell {
   display: flex;
@@ -560,6 +877,7 @@ const onSort = (event: DataTableSortEvent) => {
 .op-cell-text {
   display: flex;
   flex-direction: column;
+  gap: 0.125rem;
   min-width: 0;
   line-height: 1.3;
 }
@@ -568,6 +886,9 @@ const onSort = (event: DataTableSortEvent) => {
   color: var(--p-text-color);
   font-weight: 500;
   text-decoration: none;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .op-link:hover {
@@ -575,10 +896,23 @@ const onSort = (event: DataTableSortEvent) => {
   text-decoration: underline;
 }
 
-.op-muted {
-  font-size: 1rem;
+.op-subtext {
+  font-size: 0.75rem;
   color: var(--p-text-muted-color);
   font-variant-numeric: tabular-nums;
+}
+
+.op-color-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.op-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 :deep(.op-thumb) {
@@ -587,8 +921,10 @@ const onSort = (event: DataTableSortEvent) => {
   object-fit: contain;
   border-radius: 0.375rem;
   background: var(--p-surface-100);
+  border: 1px solid var(--p-content-border-color);
   padding: 0.125rem;
   cursor: zoom-in;
+  flex-shrink: 0;
 }
 
 :global(.p-dark) :deep(.op-thumb) {
@@ -600,17 +936,19 @@ const onSort = (event: DataTableSortEvent) => {
   height: 2.75rem;
   object-fit: cover;
   border-radius: 0.375rem;
+  border: 1px solid var(--p-content-border-color);
   cursor: zoom-in;
+  flex-shrink: 0;
 }
 
 .op-swatch {
   display: inline-block;
-  width: 0.9rem;
-  height: 0.9rem;
-  margin-right: 0.4rem;
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
   border-radius: 50%;
-  border: 1px solid var(--p-content-border-color);
-  vertical-align: -0.1rem;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
 }
 
 :deep(.op-num) {
@@ -621,26 +959,34 @@ const onSort = (event: DataTableSortEvent) => {
 /* ========== Vista Mobile (Cards) ========== */
 
 .op-cards-container {
-  display: none;
-  gap: 1rem;
+  display: flex;
+  gap: 0.875rem;
   flex-direction: column;
 }
 
 .op-empty-state {
-  padding: 2rem;
+  padding: 2rem 1rem;
   text-align: center;
   color: var(--p-text-muted-color);
-  font-size: 1rem;
+  font-size: 0.9375rem;
+  border: 1px dashed var(--p-content-border-color);
+  border-radius: 0.5rem;
 }
 
 .op-card {
   display: flex;
   flex-direction: column;
   border: 1px solid var(--p-content-border-color);
-  border-radius: 0.5rem;
-  background: var(--p-surface-card);
+  border-radius: 0.625rem;
+  background: var(--p-surface-0);
   overflow: hidden;
-  transition: all 0.2s ease-in-out;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+:global(.p-dark) .op-card {
+  background: var(--p-surface-900);
 }
 
 .op-card-selected {
@@ -648,19 +994,13 @@ const onSort = (event: DataTableSortEvent) => {
   box-shadow: 0 0 0 1px var(--p-primary-color);
 }
 
-.op-card:active {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-:global(.p-dark) .op-card:active {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
 .op-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.625rem 0.875rem;
   border-bottom: 1px solid var(--p-content-border-color);
   background: var(--p-surface-50);
 }
@@ -672,29 +1012,52 @@ const onSort = (event: DataTableSortEvent) => {
 .op-card-select {
   display: flex;
   align-items: center;
+  gap: 0.5rem;
+}
+
+.op-card-id {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--p-text-muted-color);
+  font-variant-numeric: tabular-nums;
+}
+
+.op-card-statuses {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+}
+
+.op-status-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--p-text-color);
+  cursor: pointer;
 }
 
 .op-card-content {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  padding: 1rem;
-  flex: 1;
+  gap: 0.875rem;
+  padding: 0.875rem;
 }
 
 .op-card-section {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.375rem;
 }
 
 .op-card-label {
   margin: 0;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.6875rem;
+  font-weight: 700;
   text-transform: uppercase;
   color: var(--p-text-muted-color);
-  letter-spacing: 0.5px;
+  letter-spacing: 0.04em;
 }
 
 .op-card-item-row {
@@ -709,7 +1072,6 @@ const onSort = (event: DataTableSortEvent) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
 }
 
 :deep(.op-card-thumb) {
@@ -718,11 +1080,12 @@ const onSort = (event: DataTableSortEvent) => {
   object-fit: contain;
   border-radius: 0.375rem;
   background: var(--p-surface-100);
+  border: 1px solid var(--p-content-border-color);
   padding: 0.125rem;
 }
 
 :global(.p-dark) :deep(.op-card-thumb) {
-  background: var(--p-surface-700);
+  background: var(--p-surface-800);
 }
 
 :deep(.op-card-set-thumb) {
@@ -730,13 +1093,15 @@ const onSort = (event: DataTableSortEvent) => {
   height: 3rem;
   object-fit: cover;
   border-radius: 0.375rem;
+  border: 1px solid var(--p-content-border-color);
 }
 
 .op-card-item-text {
   display: flex;
   flex-direction: column;
+  gap: 0.125rem;
   min-width: 0;
-  line-height: 1.3;
+  line-height: 1.35;
   flex: 1;
 }
 
@@ -747,7 +1112,7 @@ const onSort = (event: DataTableSortEvent) => {
   word-break: break-word;
 }
 
-.op-card-link:active {
+.op-card-link:hover {
   color: var(--p-primary-color);
   text-decoration: underline;
 }
@@ -756,31 +1121,34 @@ const onSort = (event: DataTableSortEvent) => {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.75rem;
-  padding-top: 0.5rem;
+  padding-top: 0.625rem;
   border-top: 1px solid var(--p-content-border-color);
 }
 
 .op-card-detail {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.2rem;
   min-width: 0;
+}
+
+.op-card-detail-full {
+  grid-column: 1 / -1;
 }
 
 .op-card-color-row {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-  word-break: break-word;
+  gap: 0.375rem;
 }
 
 .op-card-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.5rem;
-  padding: 0.75rem 1rem;
+  padding: 0.75rem 0.875rem;
   border-top: 1px solid var(--p-content-border-color);
   background: var(--p-surface-50);
-  justify-content: space-between;
 }
 
 :global(.p-dark) .op-card-actions {
@@ -788,67 +1156,20 @@ const onSort = (event: DataTableSortEvent) => {
 }
 
 :deep(.op-card-actions .p-button) {
-  flex: 1;
+  justify-content: center;
+  gap: 0.375rem;
 }
 
-/* ========== Media Queries ========== */
+/* ========== Responsive Toolbar ========== */
 
 @media (max-width: 1023px) {
-  .op-table-container {
-    display: none;
-  }
-
-  .op-cards-container {
-    display: flex;
-  }
-
   .op-toolbar {
     flex-direction: column;
     align-items: stretch;
-    gap: 0.75rem;
-    min-width: auto;
-  }
-
-  .op-toolbar-left,
-  .op-toolbar-right {
-    min-width: unset;
-    width: 100%;
   }
 
   .op-toolbar-left {
     flex-direction: column;
-  }
-
-  .op-toolbar-right {
-    justify-content: stretch;
-  }
-
-  :deep(.op-toolbar-right .p-inputgroup) {
-    width: 100%;
-  }
-
-  :deep(.op-toolbar-right .p-inputtext) {
-    width: 100%;
-  }
-}
-
-@media (max-width: 640px) {
-  .op-card-header {
-    padding: 0.5rem 0.75rem;
-  }
-
-  .op-card-content {
-    gap: 0.75rem;
-    padding: 0.75rem;
-  }
-
-  .op-card-actions {
-    padding: 0.5rem 0.75rem;
-    flex-wrap: wrap;
-  }
-
-  :deep(.op-card-actions .p-button) {
-    min-width: calc(50% - 0.25rem);
   }
 }
 </style>

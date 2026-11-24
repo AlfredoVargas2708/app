@@ -9,7 +9,7 @@
     <div class="flex flex-column justify-content-start w-full gap-3">
       <h2 class="page-title">Inventario Pedidos</h2>
       <div
-        v-if="inventarioLoading"
+        v-if="inventarioLoading && !loaded"
         class="flex flex-column gap-3 w-full"
         aria-label="Cargando inventario"
         aria-busy="true"
@@ -27,6 +27,7 @@
           :rows="inventarioRows"
           :total="inventarioTotal"
           @sort="getOperations"
+          @filter="filterOperations"
         />
       </div>
     </div>
@@ -36,7 +37,7 @@
 <script setup lang="ts">
 import { useDatabaseStore } from "@/stores/database.store";
 import { storeToRefs } from "pinia";
-import { onMounted } from "vue";
+import { onMounted, ref } from "vue";
 import ArrowLeft from "@primeicons/vue/arrow-left";
 import { useRouter } from "vue-router";
 import Skeleton from "primevue/skeleton";
@@ -48,7 +49,7 @@ const {
   inventarioLoading,
   inventarioFisrt,
   inventarioRows,
-  inventarioTotal,
+  inventarioTotal
 } = storeToRefs(databaseStore);
 const router = useRouter();
 
@@ -60,8 +61,16 @@ function getOperations() {
   databaseStore.getOperations();
 }
 
-onMounted(async () => {
+function filterOperations() {
   getOperations();
+}
+
+// Tras la primera carga la tabla permanece montada para conservar los filtros
+const loaded = ref(false);
+
+onMounted(async () => {
+  await databaseStore.getOperations();
+  loaded.value = true;
 });
 </script>
 

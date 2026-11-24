@@ -4,6 +4,11 @@ import { defineStore } from "pinia";
 import { ref } from "vue";
 
 const URL = import.meta.env.VITE_API_URL;
+type FilterValue =
+  | string
+  | number
+  | boolean
+  | { min?: number | null; max?: number | null };
 
 export const useDatabaseStore = defineStore("database", () => {
   const createError = ref<unknown | null>(null);
@@ -16,6 +21,7 @@ export const useDatabaseStore = defineStore("database", () => {
   const inventarioTotal = ref<number>(1);
   const sortField = ref<string | null>(null);
   const sortOrder = ref<string | null>(null);
+  const columnFilters = ref<Record<string, FilterValue>>({});
 
   async function createOperation(body: unknown) {
     createSuccess.value = false;
@@ -32,12 +38,39 @@ export const useDatabaseStore = defineStore("database", () => {
     inventarioLoading.value = true;
 
     try {
-      const { data } = await axios.get<{ count: number; rows: Operation[] }>(
-        `${URL}/database`,
-        {
-          params: { sortField: sortField.value, sortOrder: sortOrder.value },
+      // Limpiar filtros vacíos antes de enviar
+      const activeFilters: Record<string, FilterValue> = {};
+
+      for (const [key, val] of Object.entries(columnFilters.value)) {
+        if (val === "" || val == null) continue;
+
+        // Si es un objeto de rango { min, max }, solo incluirlo si al menos uno tiene valor
+        if (typeof val === "object" && !Array.isArray(val)) {
+          const cleanRange: { min?: number; max?: number } = {};
+          if (val.min != null)
+            cleanRange.min = Number(val.min);
+          if (val.max != null)
+            cleanRange.max = Number(val.max);
+
+          if (Object.keys(cleanRange).length > 0) {
+            activeFilters[key] = cleanRange;
+          }
+        } else {
+          activeFilters[key] = val;
+        }
+      }
+
+      const hasFilters = Object.keys(activeFilters).length > 0;
+
+      const { data } = await axios.get(`${URL}/database`, {
+        params: {
+          page: inventarioFisrt.value + 1,
+          rows: inventarioRows.value,
+          sortField: sortField.value ?? undefined,
+          sortOrder: sortOrder.value ?? undefined,
+          filter: hasFilters ? JSON.stringify(activeFilters) : undefined,
         },
-      );
+      });
 
       inventario.value = data.rows;
       inventarioTotal.value = data.count;
@@ -61,5 +94,6 @@ export const useDatabaseStore = defineStore("database", () => {
     inventarioTotal,
     sortField,
     sortOrder,
+    columnFilters,
   };
 });
