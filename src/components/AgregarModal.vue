@@ -18,55 +18,64 @@
           class="set-inputs"
           :class="{ minifigura: !getSetField('theme_name') }"
         >
-          <div
-            class="set-input"
-            v-for="setField in setFields"
-            v-if="!isMinifigura"
-          >
-            <label :for="setField" class="capitalize pl-1">{{
-              getSetLabel(setField)
-            }}</label>
-            <InputGroup>
-              <InputText
-                :model-value="getSetField(setField)"
-                :disabled="disabledInput(setField)"
-                @input="onSetInput(setField, $event)"
-              />
-              <InputGroupAddon
-                v-if="
-                  setField === 'set_num' &&
-                  getSetField(setField) !== '' &&
-                  setSearchLoading
-                "
-              >
-                <Spinner :size="24" spin
-              /></InputGroupAddon>
-            </InputGroup>
-          </div>
-          <div
-            class="minifig-input"
-            v-if="isMinifigura && setOptions.length > 1"
-          >
-            <label class="pl-1" for="set-select">Set a agregar</label>
-            <Select
-              input-id="set-select"
-              v-model="selectedSet"
-              :options="setOptions"
-              option-label="set_num"
-              placeholder="Seleccione el set"
-              show-clear
-              filter
-              @change="onSetSelected($event.value)"
+          <template v-if="!isMinifigura">
+            <div
+              class="set-input"
+              v-for="setField in setFields"
+              :key="setField"
             >
-              <template #option="{ option }">
-                {{ getSetLabelText(option) }}
-              </template>
-              <template #value="{ value, placeholder }">
-                <span v-if="value">{{ getSetLabelText(value) }}</span>
-                <span v-else>{{ placeholder }}</span>
-              </template>
-            </Select>
-          </div>
+              <label :for="setField" class="capitalize pl-1">{{
+                getSetLabel(setField)
+              }}</label>
+              <InputGroup>
+                <InputText
+                  :model-value="getSetField(setField)"
+                  :disabled="disabledInput(setField)"
+                  @input="onSetInput(setField, $event)"
+                />
+                <InputGroupAddon
+                  v-if="
+                    setField === 'set_num' &&
+                    getSetField(setField) !== '' &&
+                    setSearchLoading
+                  "
+                >
+                  <Spinner :size="24" spin
+                /></InputGroupAddon>
+              </InputGroup>
+            </div>
+          </template>
+          <template  v-if="isMinifigura">
+            <div class="set-input">
+              <label class="pl-1" for="set-select">Set a agregar</label>
+              <Select
+                input-id="set-select"
+                v-model="selectedSet"
+                :options="setOptions"
+                option-label="set_num"
+                placeholder="Seleccione el set"
+                :disabled="setOptions.length === 1"
+                :show-clear="setOptions.length > 1"
+                filter
+                @change="onSetSelected($event.value)"
+              >
+                <template #option="{ option }">{{
+                  getSetLabelText(option)
+                }}</template>
+                <template #value="{ value, placeholder }">
+                  <span v-if="value">{{ getSetLabelText(value) }}</span>
+                  <span v-else>{{ placeholder }}</span>
+                </template>
+              </Select>
+              <small v-if="!setOptions.length"
+                >Esta minifigura no aparece en ningún set.</small
+              >
+            </div>
+            <div class="set-input">
+              <label class="pl-1">Theme</label>
+              <InputText :model-value="getSetField('theme_name')" disabled />
+            </div>
+          </template>
         </div>
       </div>
       <div class="minifig-info" v-if="isMinifigura">
@@ -176,7 +185,7 @@
 
 <script setup lang="ts">
 import type { DynamicDialogInstance } from "primevue/dynamicdialogoptions";
-import { computed, inject, onMounted, ref, type Ref } from "vue";
+import { inject, onMounted, ref, type Ref } from "vue";
 import InputText from "primevue/inputtext";
 import InputNumber from "primevue/inputnumber";
 import type { InputNumberInputEvent } from "primevue/inputnumber";
@@ -388,13 +397,11 @@ function createOperation() {
   dialogRef?.value.close(data);
 }
 
+const normalizeSetNum = (n: string) => (n.includes("-") ? n : `${n}-1`);
+
 onMounted(async () => {
-  if (!extraData.value || isMinifigura.value) return;
-
-  const setNum = (extraData.value as SetInterface).set_num;
-  const normalized = setNum.includes("-") ? setNum : `${setNum}-1`;
-
-  await getQuantity(normalized);
+  if (!extraData.value) return;
+  await getQuantity(normalizeSetNum(extraData.value.set_num));
 });
 </script>
 

@@ -33,7 +33,7 @@
         </template>
         <template #body="{ data }">
           <div class="img-container" v-if="isImageField(column.field)">
-            <img :src="data[column.field]" alt="" />
+            <Image :src="data[column.field]" preview image-class="op-thumb" />
           </div>
           <div
             v-else-if="column.field === 'part_ids'"
@@ -107,7 +107,8 @@
               aria-label="Agregar"
               v-if="
                 tableClass === 'pieces-table' ||
-                tableClass === 'sets-piece-table' || tableClass === 'pieces-minifigura-table'
+                tableClass === 'sets-piece-table' ||
+                tableClass === 'pieces-minifigura-table'
               "
               @click="emit('add_element', data)"
             >
@@ -229,6 +230,7 @@ import Times from "@primeicons/vue/times";
 import type { SetInterface } from "@/interfaces/set.interface";
 import type { MinifigInterface } from "@/interfaces/minifig.interface";
 import List from "@primeicons/vue/list";
+import Image from "primevue/image";
 
 const props = defineProps<{
   value: Element[] | ColorElement[] | SetInterface[] | MinifigInterface[];
@@ -376,23 +378,8 @@ function changeElementSearch(element_id: string) {
 }
 
 .img-container {
-  width: 90px;
-  height: 90px;
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 8px;
-    box-shadow:
-      rgba(0, 0, 0, 0.16) 0px 3px 6px,
-      rgba(0, 0, 0, 0.23) 0px 3px 6px;
-  }
-
-  &:hover img,
-  &:active img {
-    object-fit: contain;
-  }
+  width: 5.5rem;
+  height: 5.5rem;
 }
 
 .color-container {
@@ -415,6 +402,24 @@ function changeElementSearch(element_id: string) {
   justify-content: center;
   width: 100%;
   gap: 10px;
+}
+
+:deep(.op-thumb) {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 0.5rem;
+  background: var(--p-surface-100);
+  padding: 0.25rem;
+}
+
+:deep(.p-image-preview) {
+  width: 100%;
+  height: 100%;
+}
+
+:global(.p-dark) :deep(.op-thumb) {
+  background: var(--p-surface-800);
 }
 
 .button-container {

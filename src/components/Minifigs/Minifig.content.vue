@@ -102,6 +102,7 @@ import type { DynamicDialogCloseOptions } from "primevue/dynamicdialogoptions";
 import { useDialog } from "primevue/usedialog";
 import type { DataTablePageEvent } from "primevue/datatable";
 import { useDatabaseStore } from "@/stores/database.store";
+import { useToast } from "primevue/usetoast";
 
 const minifigStore = useMinifigStore();
 const {
@@ -121,6 +122,8 @@ const {
 const props = defineProps<{
   tabValue: string;
 }>();
+
+const toast = useToast();
 
 const searchValue = ref<string | null>(null);
 const dialog = useDialog();
@@ -168,37 +171,25 @@ async function onSetMinifigPage(event: DataTablePageEvent) {
   );
 }
 
-function openAddModal(data: unknown) {
-  const dialogData: any = {};
-  if (data && typeof data === "object" && "element_id" in data) {
-    const sets = minifigSets.value ?? [];
+async function openAddModal(data: unknown) {
+  const current = minifig.value;
+  if (!current || !data || typeof data !== "object" || !("element_id" in data))
+    return;
 
-    dialogData["data"] = data;
-    dialogData["set_editable"] = false;
-    dialogData["minifigura"] = true;
-    dialogData["minifigData"] = minifig.value;
-    dialogData["setOptions"] = sets;
-    // Si hay un solo set se preselecciona; si hay varios, el usuario elige
-    dialogData["extra"] = sets.length === 1 ? sets[0] : null;
-  }
+  const allSets = minifigSets.value ?? [];
 
   dialog.open(AgregarModal, {
-    props: {
-      header: "Agregar Pedido",
-      style: {
-        width: "80vw",
-      },
-      breakpoints: {
-        "960px": "75vw",
-        "640px": "90vw",
-      },
-      modal: true,
-      closable: false
+    data: {
+      data,
+      set_editable: false,
+      minifigura: true,
+      minifigData: current,
+      setOptions: allSets,
+      extra: allSets.length === 1 ? allSets[0] : null,
     },
-    data: dialogData,
-    onClose: async (data: DynamicDialogCloseOptions) => {
-      if (data.data) {
-        await databaseStore.createOperation(data.data);
+    onClose: async (event: DynamicDialogCloseOptions) => {
+      if (event.data) {
+        await databaseStore.createOperation(event.data);
       }
     },
   });

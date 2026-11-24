@@ -20,7 +20,8 @@ const {
   setMinifigs,
   setParts,
 } = storeToRefs(useSetsStore());
-const { createError } = storeToRefs(useDatabaseStore());
+const { createError, inventarioError, createSuccess } =
+  storeToRefs(useDatabaseStore());
 
 const toast = useToast();
 
@@ -79,6 +80,11 @@ const errorToasts: ErrorToast[] = [
     summary: "Error Al Buscar Cantidad Máxima Pieza En Set",
     detail: "No se encontró el set que contiene la pieza",
   },
+  {
+    error: inventarioError,
+    summary: "Error Al Obtener Inventario",
+    detail: "No se pudo obtener los pedidos en el inventario",
+  },
 ];
 
 errorToasts.forEach(({ error, summary, detail, onError }) => {
@@ -88,6 +94,16 @@ errorToasts.forEach(({ error, summary, detail, onError }) => {
     toast.add({ severity: "error", summary, detail, life: 4000 });
   });
 });
+
+watch(createSuccess, (success) => {
+  if (success) {
+    toast.add({
+      severity: "success",
+      summary: "Pedido Creado",
+      detail: "Se agrego el pedido al inventario correctamente",
+    });
+  }
+});
 </script>
 
 <template>
@@ -95,3 +111,23 @@ errorToasts.forEach(({ error, summary, detail, onError }) => {
   <DynamicDialog />
   <Toast />
 </template>
+
+<style>
+.page-title {
+  font-size: 2.25rem;
+  margin: 0.67em 0;
+}
+
+@media (max-width: 991px) {
+  .page-title {
+    font-size: 1.875rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .page-title {
+    font-size: 1.5rem;
+    margin: 0.5em 0;
+  }
+}
+</style>

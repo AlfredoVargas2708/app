@@ -15,7 +15,15 @@
         </TabList>
         <TabPanels class="tab-panel">
           <TabPanel v-for="tab in tabs" :key="tab.id" :value="tab.id">
-            <component :is="tab.content" :tab-value="tabValue" />
+            <div class="flex flex-column w-full gap-3">
+              <div class="flex flex-row justify-content-start w-full">
+                <Button outlined aria-label="Ver Inventario" severity="info" @click="openInventario">
+                  <Box :size="24" />
+                  <span class="text-base">Ver Inventario</span>
+                </Button>
+              </div>
+              <component :is="tab.content" :tab-value="tabValue" />
+            </div>
           </TabPanel>
         </TabPanels>
       </Tabs>
@@ -33,6 +41,9 @@ import { markRaw, ref } from "vue";
 import PieceContent from "@/components/Pieces/Piece.content.vue";
 import SetContent from "@/components/Sets/Set.content.vue";
 import MinifigContent from "@/components/Minifigs/Minifig.content.vue";
+import Button from "primevue/button";
+import Box from "@primeicons/vue/box";
+import { useRouter } from "vue-router";
 
 const tabs = ref([
   {
@@ -55,6 +66,11 @@ const tabs = ref([
   },
 ]);
 const tabValue = ref<string>("pieza");
+const router = useRouter();
+
+function openInventario() {
+  router.push({ path: "/inventario" });
+}
 </script>
 
 <style scoped>
@@ -64,25 +80,8 @@ const tabValue = ref<string>("pieza");
     rgba(0, 0, 0, 0.24) 0px 1px 2px;
 }
 
-.page-title {
-  font-size: 2.25rem;
-  margin: 0.67em 0;
-}
-
-/* Tablet */
-@media (max-width: 991px) {
-  .page-title {
-    font-size: 1.875rem;
-  }
-}
-
 /* Móvil */
 @media (max-width: 767px) {
-  .page-title {
-    font-size: 1.5rem;
-    margin: 0.5em 0;
-  }
-
   .tab-panel {
     padding: 0.25rem;
   }
