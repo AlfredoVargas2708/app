@@ -77,7 +77,7 @@ const filters = ref(
     filterFields.map((f) => [
       f,
       {
-        value: (columnFilters.value[f] ?? null) as string | null,
+        value: (columnFilters.value[f] ?? null) as unknown,
         matchMode: FilterMatchMode.CONTAINS,
       },
     ]),
@@ -88,13 +88,26 @@ const isMetaData = (model: unknown): model is DataTableFilterMetaData =>
   typeof model === "object" && model !== null && "value" in model;
 
 const emitFilter = useDebounceFn((event: DataTableFilterEvent) => {
-  const next: Record<string, string> = {};
+  const next: Record<string, string | { min?: number; max?: number }> = {};
 
   for (const [field, model] of Object.entries(event.filters ?? {})) {
     if (field === "global") continue;
     if (!isMetaData(model)) continue;
 
-    const value = model.value == null ? "" : String(model.value).trim();
+    const raw: unknown = model.value;
+    if (raw == null) continue;
+
+    // Los filtros de rango (num_parts) llegan como { min, max }
+    if (typeof raw === "object") {
+      const { min, max } = raw as { min?: number | null; max?: number | null };
+      const range: { min?: number; max?: number } = {};
+      if (min != null) range.min = min;
+      if (max != null) range.max = max;
+      if (Object.keys(range).length > 0) next[field] = range;
+      continue;
+    }
+
+    const value = String(raw).trim();
     if (value) next[field] = value;
   }
 
@@ -508,11 +521,11 @@ const onSort = (event: DataTableSortEvent) => {
             <div class="op-range-filter">
               <InputNumber
                 :model-value="filterModel.value?.min ?? null"
-                @update:model-value="
-                  (val) => {
+                @input="
+                  (e) => {
                     filterModel.value = {
                       ...(filterModel.value ?? {}),
-                      min: val,
+                      min: e.value,
                     };
                     filterCallback();
                   }
@@ -525,11 +538,11 @@ const onSort = (event: DataTableSortEvent) => {
               />
               <InputNumber
                 :model-value="filterModel.value?.max ?? null"
-                @update:model-value="
-                  (val) => {
+                @input="
+                  (e) => {
                     filterModel.value = {
                       ...(filterModel.value ?? {}),
-                      max: val,
+                      max: e.value,
                     };
                     filterCallback();
                   }
