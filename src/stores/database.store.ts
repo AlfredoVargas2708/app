@@ -22,6 +22,7 @@ export const useDatabaseStore = defineStore("database", () => {
   const sortField = ref<string | null>(null);
   const sortOrder = ref<string | null>(null);
   const columnFilters = ref<Record<string, FilterValue>>({});
+  const editError = ref<unknown | null>(null);
 
   async function createOperation(body: unknown) {
     createSuccess.value = false;
@@ -47,10 +48,8 @@ export const useDatabaseStore = defineStore("database", () => {
         // Si es un objeto de rango { min, max }, solo incluirlo si al menos uno tiene valor
         if (typeof val === "object" && !Array.isArray(val)) {
           const cleanRange: { min?: number; max?: number } = {};
-          if (val.min != null)
-            cleanRange.min = Number(val.min);
-          if (val.max != null)
-            cleanRange.max = Number(val.max);
+          if (val.min != null) cleanRange.min = Number(val.min);
+          if (val.max != null) cleanRange.max = Number(val.max);
 
           if (Object.keys(cleanRange).length > 0) {
             activeFilters[key] = cleanRange;
@@ -81,6 +80,19 @@ export const useDatabaseStore = defineStore("database", () => {
     }
   }
 
+  async function editStatus(
+    id: number,
+    body: { field: string; value: boolean },
+  ) {
+    editError.value = null;
+
+    try {
+      await axios.put(`${URL}/database/status/${id}`, body);
+    } catch (error) {
+      editError.value = error;
+    }
+  }
+
   return {
     createError,
     createOperation,
@@ -95,5 +107,7 @@ export const useDatabaseStore = defineStore("database", () => {
     sortField,
     sortOrder,
     columnFilters,
+    editError,
+    editStatus,
   };
 });

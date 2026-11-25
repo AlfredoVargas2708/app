@@ -30,9 +30,12 @@ const emit = defineEmits<{
   (e: "edit", item: Operation): void;
   (e: "delete", items: Operation[]): void;
   (
-    e: "update-status",
-    items: Operation[],
-    patch: Partial<Pick<Operation, "pedido" | "completo">>,
+    e: "updateStatus",
+    payload: {
+      id: number;
+      field: string;
+      value: boolean;
+    },
   ): void;
   (e: "sort"): void;
   (e: "filter"): void;
@@ -70,6 +73,7 @@ const filterFields = [
   "theme_name",
   "part_cat_name",
   "num_parts",
+  "task",
 ] as const;
 
 const filters = ref(
@@ -119,15 +123,6 @@ const emitFilter = useDebounceFn((event: DataTableFilterEvent) => {
 
 /* ---------- Acciones ---------- */
 
-const onEdit = () => {
-  const item = selected.value[0];
-  if (single.value && item) emit("edit", item);
-};
-
-const onEditCard = (item: Operation) => {
-  emit("edit", item);
-};
-
 const onToggleSelection = (item: Operation) => {
   const index = selected.value.findIndex(
     (s) => s.operation_id === item.operation_id,
@@ -143,26 +138,7 @@ const isSelected = (item: Operation) => {
   return selected.value.some((s) => s.operation_id === item.operation_id);
 };
 
-const onDelete = (itemsToDelete: Operation[] = [...selected.value]) => {
-  emit("delete", itemsToDelete);
-};
-
-const onStatus = (
-  targets: Operation[],
-  patch: Partial<Pick<Operation, "pedido" | "completo">>,
-) => {
-  emit("update-status", targets, patch);
-};
-
-const onToggleRowStatus = (
-  item: Operation,
-  field: "pedido" | "completo",
-  value: boolean,
-) => {
-  onStatus([item], { [field]: value });
-};
-
-const onRowDblClick = (e: { data: Operation }) => emit("edit", e.data);
+const onRowDblClick = (e: { data: Operation }) => {};
 
 const onSort = (event: DataTableSortEvent) => {
   if (
@@ -176,6 +152,15 @@ const onSort = (event: DataTableSortEvent) => {
     emit("sort");
   }
 };
+
+const updateCheckbox = (value: boolean, id: number, field: keyof Operation) => {
+  console.log("updateCheckbox fired:", { value, id, field });
+  emit("updateStatus", {
+    id,
+    field,
+    value,
+  });
+};
 </script>
 
 <template>
@@ -183,12 +168,7 @@ const onSort = (event: DataTableSortEvent) => {
     <!-- Barra de acciones -->
     <div class="op-toolbar">
       <div class="op-toolbar-left">
-        <Button
-          :disabled="!single"
-          @click="onEdit"
-          severity="success"
-          size="small"
-        >
+        <Button :disabled="!single" severity="success" size="small">
           <Pencil :size="16" />
           <span class="font-medium">Editar</span>
         </Button>
@@ -196,7 +176,6 @@ const onSort = (event: DataTableSortEvent) => {
           severity="danger"
           outlined
           :disabled="!hasSelection"
-          @click="onDelete()"
           size="small"
         >
           <Trash :size="16" />
@@ -232,6 +211,8 @@ const onSort = (event: DataTableSortEvent) => {
         row-hover
         striped-rows
         size="small"
+        scrollable
+        class="op-datatable"
         @row-dblclick="onRowDblClick"
         @sort="onSort($event)"
         @filter="emitFilter"
@@ -246,18 +227,21 @@ const onSort = (event: DataTableSortEvent) => {
           </div>
         </template>
 
+        <!-- Selección -->
         <Column
           selection-mode="multiple"
           header-style="width: 3rem"
           body-class="op-center"
         />
 
+        <!-- Código (se ajusta al contenido) -->
         <Column
           sortable
           header="Código"
           field="element_id"
-          style="min-width: 7.5rem"
-          body-class="op-mono"
+          style="min-width: 7rem"
+          header-class="op-fit"
+          body-class="op-mono op-fit"
           filter
           :show-filter-menu="false"
         >
@@ -277,12 +261,13 @@ const onSort = (event: DataTableSortEvent) => {
           </template>
         </Column>
 
+        <!-- Pieza (flexible) -->
         <Column
           header="Pieza"
           field="element_name"
           sortable
           sort-field="element_name"
-          style="min-width: 16rem"
+          style="min-width: 18rem"
           filter
           :show-filter-menu="false"
         >
@@ -326,11 +311,14 @@ const onSort = (event: DataTableSortEvent) => {
           </template>
         </Column>
 
+        <!-- Color (se ajusta al contenido) -->
         <Column
           header="Color"
           field="color_name"
           sortable
-          style="min-width: 11.5rem"
+          style="min-width: 8rem"
+          header-class="op-fit"
+          body-class="op-fit"
           filter
           :show-filter-menu="false"
         >
@@ -359,12 +347,13 @@ const onSort = (event: DataTableSortEvent) => {
           </template>
         </Column>
 
+        <!-- Set (flexible) -->
         <Column
           header="Set"
           field="name"
           sortable
           sort-field="name"
-          style="min-width: 16rem"
+          style="min-width: 18rem"
           filter
           :show-filter-menu="false"
         >
@@ -408,12 +397,14 @@ const onSort = (event: DataTableSortEvent) => {
           </template>
         </Column>
 
+        <!-- Cód. Set (se ajusta al contenido) -->
         <Column
           header="Cód. Set"
           field="set_num"
           sortable
-          style="min-width: 8rem"
-          body-class="op-mono"
+          style="min-width: 7rem"
+          header-class="op-fit"
+          body-class="op-mono op-fit"
           filter
           :show-filter-menu="false"
         >
@@ -433,13 +424,14 @@ const onSort = (event: DataTableSortEvent) => {
           </template>
         </Column>
 
+        <!-- Cant. (se ajusta al contenido) -->
         <Column
           header="Cant."
           field="cantidad"
           sortable
-          style="width: 6.5rem"
-          header-class="op-right-header"
-          body-class="op-num op-right"
+          style="min-width: 7rem"
+          header-class="op-right-header op-fit"
+          body-class="op-num op-right op-fit"
           filter
           :show-filter-menu="false"
         >
@@ -459,11 +451,42 @@ const onSort = (event: DataTableSortEvent) => {
           </template>
         </Column>
 
+        <!-- N° Task (se ajusta al contenido) -->
+        <Column
+          sortable
+          header="N° Task"
+          field="task"
+          style="min-width: 7rem"
+          header-class="op-right-header op-fit"
+          body-class="op-num op-right op-fit"
+          filter
+          :show-filter-menu="false"
+        >
+          <template #filter="{ filterModel, filterCallback }">
+            <InputNumber
+              :model-value="filterModel.value"
+              @update:model-value="
+                (value) => {
+                  filterModel.value = value;
+                  filterCallback();
+                }
+              "
+              :use-grouping="false"
+              size="small"
+              placeholder="Filtrar"
+              fluid
+            />
+          </template>
+        </Column>
+
+        <!-- Tema (se ajusta al contenido) -->
         <Column
           header="Tema"
           field="theme_name"
           sortable
-          style="min-width: 10.5rem"
+          style="min-width: 8rem"
+          header-class="op-fit"
+          body-class="op-fit"
           filter
           :show-filter-menu="false"
         >
@@ -483,11 +506,14 @@ const onSort = (event: DataTableSortEvent) => {
           </template>
         </Column>
 
+        <!-- Categoría (se ajusta al contenido) -->
         <Column
           header="Categoría"
           field="part_cat_name"
           sortable
-          style="min-width: 13rem"
+          style="min-width: 8rem"
+          header-class="op-fit"
+          body-class="op-fit"
           filter
           :show-filter-menu="false"
         >
@@ -507,13 +533,14 @@ const onSort = (event: DataTableSortEvent) => {
           </template>
         </Column>
 
+        <!-- N° Piezas (se ajusta al contenido, mínimo para el filtro de rango) -->
         <Column
           header="N° Piezas"
           field="num_parts"
           sortable
-          style="min-width: 13rem"
-          header-class="op-right-header"
-          body-class="op-num op-right"
+          style="min-width: 10rem"
+          header-class="op-right-header op-fit"
+          body-class="op-num op-right op-fit"
           filter
           :show-filter-menu="false"
         >
@@ -557,13 +584,14 @@ const onSort = (event: DataTableSortEvent) => {
           </template>
         </Column>
 
+        <!-- Pedido -->
         <Column
           header="Pedido"
           field="pedido"
           sortable
-          style="width: 5.5rem"
-          header-class="op-center-header"
-          body-class="op-center"
+          style="min-width: 6rem"
+          header-class="op-center-header op-fit"
+          body-class="op-center op-fit"
         >
           <template #body="{ data }">
             <span @click.stop @dblclick.stop>
@@ -571,20 +599,22 @@ const onSort = (event: DataTableSortEvent) => {
                 :model-value="Boolean(data.pedido)"
                 :binary="true"
                 @update:model-value="
-                  (val: boolean) => onToggleRowStatus(data, 'pedido', val)
+                  (val: boolean) =>
+                    updateCheckbox(val, data['operation_id'], 'pedido')
                 "
               />
             </span>
           </template>
         </Column>
 
+        <!-- Completo -->
         <Column
           header="Completo"
           field="completo"
           sortable
-          style="width: 6rem"
-          header-class="op-center-header"
-          body-class="op-center"
+          style="min-width: 7rem"
+          header-class="op-center-header op-fit"
+          body-class="op-center op-fit"
         >
           <template #body="{ data }">
             <span @click.stop @dblclick.stop>
@@ -592,7 +622,8 @@ const onSort = (event: DataTableSortEvent) => {
                 :model-value="Boolean(data.completo)"
                 :binary="true"
                 @update:model-value="
-                  (val: boolean) => onToggleRowStatus(data, 'completo', val)
+                  (val: boolean) =>
+                    updateCheckbox(val, data['operation_id'], 'completo')
                 "
               />
             </span>
@@ -625,23 +656,11 @@ const onSort = (event: DataTableSortEvent) => {
 
           <div class="op-card-statuses">
             <label class="op-status-toggle">
-              <Checkbox
-                :model-value="Boolean(item.pedido)"
-                :binary="true"
-                @update:model-value="
-                  (val: boolean) => onToggleRowStatus(item, 'pedido', val)
-                "
-              />
+              <Checkbox :model-value="Boolean(item.pedido)" :binary="true" />
               <span>Pedido</span>
             </label>
             <label class="op-status-toggle">
-              <Checkbox
-                :model-value="Boolean(item.completo)"
-                :binary="true"
-                @update:model-value="
-                  (val: boolean) => onToggleRowStatus(item, 'completo', val)
-                "
-              />
+              <Checkbox :model-value="Boolean(item.completo)" :binary="true" />
               <span>Completo</span>
             </label>
           </div>
@@ -731,39 +750,19 @@ const onSort = (event: DataTableSortEvent) => {
         </div>
 
         <div class="op-card-actions">
-          <Button
-            severity="success"
-            outlined
-            size="small"
-            @click="onEditCard(item)"
-          >
+          <Button severity="success" outlined size="small">
             <Pencil :size="15" />
             <span>Editar</span>
           </Button>
-          <Button
-            severity="secondary"
-            outlined
-            size="small"
-            @click="onStatus([item], { pedido: true })"
-          >
+          <Button severity="secondary" outlined size="small">
             <ShoppingCart :size="15" />
             <span>Pedido</span>
           </Button>
-          <Button
-            severity="secondary"
-            outlined
-            size="small"
-            @click="onStatus([item], { pedido: true, completo: true })"
-          >
+          <Button severity="secondary" outlined size="small">
             <Check :size="15" />
             <span>Completo</span>
           </Button>
-          <Button
-            severity="danger"
-            outlined
-            size="small"
-            @click="onDelete([item])"
-          >
+          <Button severity="danger" outlined size="small">
             <Trash :size="15" />
             <span>Eliminar</span>
           </Button>
@@ -820,6 +819,25 @@ const onSort = (event: DataTableSortEvent) => {
 :global(.p-dark) .op-table-container {
   background: var(--p-surface-900);
   box-shadow: none;
+}
+
+/* Layout automático: el navegador calcula el ancho según el contenido */
+:deep(.op-datatable .p-datatable-table) {
+  table-layout: auto;
+  width: 100%;
+  min-width: 100%;
+}
+
+/* Columnas que se ajustan al contenido: lo más angostas posible, sin saltos.
+   El min-width de cada Column evita que el filtro quede diminuto. */
+:deep(.op-fit) {
+  width: 1%;
+  white-space: nowrap;
+}
+
+/* Pieza y Set absorben el espacio sobrante y pueden envolver texto */
+:deep(.op-link) {
+  white-space: normal;
 }
 
 :deep(.p-datatable-thead > tr > th) {

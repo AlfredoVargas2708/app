@@ -28,6 +28,7 @@
           :total="inventarioTotal"
           @sort="getOperations"
           @filter="filterOperations"
+          @update-status="onStatusChange($event)"
         />
       </div>
     </div>
@@ -49,7 +50,7 @@ const {
   inventarioLoading,
   inventarioFisrt,
   inventarioRows,
-  inventarioTotal
+  inventarioTotal,
 } = storeToRefs(databaseStore);
 const router = useRouter();
 
@@ -57,19 +58,32 @@ function goBack() {
   router.back();
 }
 
-function getOperations() {
-  databaseStore.getOperations();
+async function getOperations() {
+  await databaseStore.getOperations();
 }
 
-function filterOperations() {
-  getOperations();
+async function filterOperations() {
+  await getOperations();
+}
+
+async function onStatusChange(status: {
+  id: number;
+  value: boolean;
+  field: string;
+}) {
+  if (!status.id || !status.field) return;
+
+  await databaseStore.editStatus(status.id, {
+    field: status.field,
+    value: status.value,
+  });
 }
 
 // Tras la primera carga la tabla permanece montada para conservar los filtros
 const loaded = ref(false);
 
 onMounted(async () => {
-  await databaseStore.getOperations();
+  await getOperations();
   loaded.value = true;
 });
 </script>
