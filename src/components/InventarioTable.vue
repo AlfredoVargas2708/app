@@ -656,11 +656,25 @@ const updateCheckbox = (value: boolean, id: number, field: keyof Operation) => {
 
           <div class="op-card-statuses">
             <label class="op-status-toggle">
-              <Checkbox :model-value="Boolean(item.pedido)" :binary="true" />
+              <Checkbox
+                :model-value="Boolean(item.pedido)"
+                :binary="true"
+                @update:model-value="
+                  (val: boolean) =>
+                    updateCheckbox(val, item.operation_id, 'pedido')
+                "
+              />
               <span>Pedido</span>
             </label>
             <label class="op-status-toggle">
-              <Checkbox :model-value="Boolean(item.completo)" :binary="true" />
+              <Checkbox
+                :model-value="Boolean(item.completo)"
+                :binary="true"
+                @update:model-value="
+                  (val: boolean) =>
+                    updateCheckbox(val, item.operation_id, 'completo')
+                "
+              />
               <span>Completo</span>
             </label>
           </div>
