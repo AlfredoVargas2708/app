@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { ref } from "vue";
 import { FilterMatchMode } from "@primevue/core/api";
 import DataTable, {
+  type DataTableCellEditCompleteEvent,
   type DataTableFilterEvent,
   type DataTableFilterMetaData,
   type DataTableSortEvent,
@@ -13,7 +14,7 @@ import Image from "primevue/image";
 import Checkbox from "primevue/checkbox";
 import InputNumber from "primevue/inputnumber";
 import type { Operation } from "@/interfaces/database.interface";
-import { Pencil, Check, ShoppingCart, Trash } from "@primeicons/vue";
+import { Pencil, Trash } from "@primeicons/vue";
 import { storeToRefs } from "pinia";
 import { useDatabaseStore } from "@/stores/database.store";
 import { useDebounceFn } from "@vueuse/core";
@@ -27,7 +28,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: "edit", item: Operation): void;
+  (e: "edit", item: Operation, field: keyof Operation): void;
   (e: "delete", items: Operation[]): void;
   (
     e: "updateStatus",
@@ -55,10 +56,6 @@ if (typeof window !== "undefined") {
 }
 
 /* ---------- Selección y Store ---------- */
-
-const selected = ref<Operation[]>([]);
-const hasSelection = computed(() => selected.value.length > 0);
-const single = computed(() => selected.value.length === 1);
 const { sortField, sortOrder, columnFilters } = storeToRefs(useDatabaseStore());
 
 /* ---------- Filtros por columna ---------- */
@@ -123,23 +120,6 @@ const emitFilter = useDebounceFn((event: DataTableFilterEvent) => {
 
 /* ---------- Acciones ---------- */
 
-const onToggleSelection = (item: Operation) => {
-  const index = selected.value.findIndex(
-    (s) => s.operation_id === item.operation_id,
-  );
-  if (index > -1) {
-    selected.value.splice(index, 1);
-  } else {
-    selected.value.push(item);
-  }
-};
-
-const isSelected = (item: Operation) => {
-  return selected.value.some((s) => s.operation_id === item.operation_id);
-};
-
-const onRowDblClick = (e: { data: Operation }) => {};
-
 const onSort = (event: DataTableSortEvent) => {
   if (
     typeof event.sortField === "string" &&
@@ -161,48 +141,21 @@ const updateCheckbox = (value: boolean, id: number, field: keyof Operation) => {
     value,
   });
 };
+
+const onCellEditComplete = (event: DataTableCellEditCompleteEvent) => {
+  emit("edit", event.newData, event.field as keyof Operation);
+};
 </script>
 
 <template>
   <div class="op-table w-full">
-    <!-- Barra de acciones -->
-    <div class="op-toolbar">
-      <div class="op-toolbar-left">
-        <Button :disabled="!single" severity="success" size="small">
-          <Pencil :size="16" />
-          <span class="font-medium">Editar</span>
-        </Button>
-        <Button
-          severity="danger"
-          outlined
-          :disabled="!hasSelection"
-          size="small"
-        >
-          <Trash :size="16" />
-          <span class="font-medium">
-            Eliminar{{ hasSelection ? ` (${selected.length})` : "" }}
-          </span>
-        </Button>
-      </div>
-
-      <div v-if="hasSelection" class="op-toolbar-right">
-        <span class="op-selection-badge">
-          {{ selected.length }}
-          {{ selected.length === 1 ? "seleccionado" : "seleccionados" }}
-        </span>
-      </div>
-    </div>
-
     <!-- Vista de Tabla (Desktop) -->
     <div v-if="!isMobile" class="op-table-container">
       <DataTable
-        v-model:selection="selected"
         v-model:filters="filters"
         :value="props.items"
         :loading="loading"
         data-key="operation_id"
-        selection-mode="multiple"
-        :meta-key-selection="false"
         paginator
         :rows="rows"
         :first="first"
@@ -212,14 +165,15 @@ const updateCheckbox = (value: boolean, id: number, field: keyof Operation) => {
         striped-rows
         size="small"
         scrollable
-        class="op-datatable"
-        @row-dblclick="onRowDblClick"
+        class="op-datatable cursor-auto"
         @sort="onSort($event)"
         @filter="emitFilter"
         lazy
         :sort-field="sortField ?? ''"
         :sort-order="sortOrder === 'ASC' ? 1 : sortOrder === 'DESC' ? -1 : 0"
         filter-display="row"
+        editMode="cell"
+        @cell-edit-complete="onCellEditComplete"
       >
         <template #empty>
           <div class="op-empty-table">
@@ -227,12 +181,23 @@ const updateCheckbox = (value: boolean, id: number, field: keyof Operation) => {
           </div>
         </template>
 
-        <!-- Selección -->
         <Column
-          selection-mode="multiple"
-          header-style="width: 3rem"
-          body-class="op-center"
-        />
+          header="Eliminar"
+          style="min-width: 4rem"
+          field="acciones"
+          class="op-center"
+        >
+          <template #body="{ data }">
+            <Button
+              severity="danger"
+              outlined
+              size="small"
+              @click="emit('delete', [data])"
+            >
+              <Trash :size="16" />
+            </Button>
+          </template>
+        </Column>
 
         <!-- Código (se ajusta al contenido) -->
         <Column
@@ -258,6 +223,17 @@ const updateCheckbox = (value: boolean, id: number, field: keyof Operation) => {
               placeholder="Filtrar"
               fluid
             />
+          </template>
+          <template #editor="{ data }">
+            <InputText v-model="data.element_id" autofocus fluid size="small" />
+          </template>
+          <template #body="{ data }">
+            <div
+              class="flex flex-row align-items-center justify-content-end gap-2"
+            >
+              <span>{{ data.element_id }}</span>
+              <Pencil :size="14" />
+            </div>
           </template>
         </Column>
 
@@ -291,7 +267,6 @@ const updateCheckbox = (value: boolean, id: number, field: keyof Operation) => {
                 >
                   {{ data.element_name }}
                 </a>
-                <span class="op-subtext">#{{ data.element_id }}</span>
               </div>
             </div>
           </template>
@@ -377,7 +352,6 @@ const updateCheckbox = (value: boolean, id: number, field: keyof Operation) => {
                 >
                   {{ data.name }}
                 </a>
-                <span class="op-subtext">{{ data.set_num }}</span>
               </div>
             </div>
           </template>
@@ -422,6 +396,22 @@ const updateCheckbox = (value: boolean, id: number, field: keyof Operation) => {
               fluid
             />
           </template>
+          <template #editor="{ data }">
+            <InputText
+              v-model="data.set_num.split('-')[0]"
+              autofocus
+              fluid
+              size="small"
+            />
+          </template>
+          <template #body="{ data }">
+            <div
+              class="flex flex-row align-items-center justify-content-end gap-2"
+            >
+              <span>{{ data.set_num }}</span>
+              <Pencil :size="14" />
+            </div>
+          </template>
         </Column>
 
         <!-- Cant. (se ajusta al contenido) -->
@@ -448,6 +438,17 @@ const updateCheckbox = (value: boolean, id: number, field: keyof Operation) => {
               placeholder="Filtrar"
               fluid
             />
+          </template>
+          <template #editor="{ data }">
+            <InputText v-model="data.cantidad" autofocus fluid size="small" />
+          </template>
+          <template #body="{ data }">
+            <div
+              class="flex flex-row align-items-center justify-content-end gap-2"
+            >
+              <span>{{ data.cantidad }}</span>
+              <Pencil :size="14" />
+            </div>
           </template>
         </Column>
 
@@ -476,6 +477,17 @@ const updateCheckbox = (value: boolean, id: number, field: keyof Operation) => {
               placeholder="Filtrar"
               fluid
             />
+          </template>
+          <template #editor="{ data }">
+            <InputText v-model="data.task" autofocus fluid size="small" />
+          </template>
+          <template #body="{ data }">
+            <div
+              class="flex flex-row align-items-center justify-content-end gap-2"
+            >
+              <span>{{ data.task }}</span>
+              <Pencil :size="14" />
+            </div>
           </template>
         </Column>
 
@@ -633,7 +645,7 @@ const updateCheckbox = (value: boolean, id: number, field: keyof Operation) => {
     </div>
 
     <!-- Vista de Cards (Mobile) -->
-    <div v-if="isMobile" class="op-cards-container">
+    <!--     <div v-if="isMobile" class="op-cards-container">
       <div v-if="props.items.length === 0" class="op-empty-state">
         No hay piezas que coincidan con tu búsqueda.
       </div>
@@ -782,7 +794,7 @@ const updateCheckbox = (value: boolean, id: number, field: keyof Operation) => {
           </Button>
         </div>
       </div>
-    </div>
+    </div> -->
   </div>
 </template>
 

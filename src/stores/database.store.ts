@@ -93,6 +93,22 @@ export const useDatabaseStore = defineStore("database", () => {
     }
   }
 
+  async function editOperation(operation: Operation, field: keyof Operation) {
+    editError.value = null;
+
+    try {
+      const { data } = await axios.put<Element>(
+        `${URL}/database/edit-operation/${operation.operation_id}`,
+        { field, value: operation[field] },
+      );
+
+      return data;
+    } catch (error) {
+      editError.value = error;
+      return null;
+    }
+  }
+
   return {
     createError,
     createOperation,
@@ -109,5 +125,6 @@ export const useDatabaseStore = defineStore("database", () => {
     columnFilters,
     editError,
     editStatus,
+    editOperation,
   };
 });

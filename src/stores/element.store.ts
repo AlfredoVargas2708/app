@@ -27,6 +27,7 @@ export const useElementStore = defineStore("element", () => {
   const elementSetsRows = ref<number>(5);
   const partCategories = ref<PartCategory[] | null>(null);
   const partCategoriesError = ref<unknown | null>(null);
+  const createError = ref<unknown | null>(null);
 
   async function getElement(element_id: string) {
     element.value = undefined;
@@ -127,6 +128,15 @@ export const useElementStore = defineStore("element", () => {
     }
   }
 
+  async function createElement(element: Element): Promise<Element | void> {
+    try {
+      const { data } = await axios.put(`${URL}/elements/create`, element);
+      return data;
+    } catch (error) {
+      createError.value = error;
+    }
+  }
+
   return {
     element,
     elementError,
@@ -150,5 +160,6 @@ export const useElementStore = defineStore("element", () => {
     partCategories,
     partCategoriesError,
     getPartCategories,
+    createElement,
   };
 });

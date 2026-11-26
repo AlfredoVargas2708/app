@@ -8,4 +8,5 @@ export interface Element {
   color_id: number;
   part_cat_id: number;
   part_cat_name: string;
+  part_url: string;
 }
