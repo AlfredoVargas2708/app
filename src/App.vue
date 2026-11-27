@@ -9,6 +9,7 @@ import { useSetsStore } from "./stores/sets.store";
 import { useDatabaseStore } from "./stores/database.store";
 import { useToast } from "primevue/usetoast";
 import { useMinifigStore } from "./stores/minifig.store";
+import ConfirmPopup from 'primevue/confirmpopup';
 
 const { elementError, partCategoriesError, createElementError } =
   storeToRefs(useElementStore());
@@ -178,6 +179,7 @@ watch(deleteSucces, (success) => {
 <template>
   <RouterView />
   <DynamicDialog />
+  <ConfirmPopup />
   <Toast />
 </template>
 

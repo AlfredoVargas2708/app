@@ -18,10 +18,11 @@ import Paginator from "primevue/paginator";
 import Dialog from "primevue/dialog";
 import ProgressBar from "primevue/progressbar";
 import type { Operation } from "@/interfaces/database.interface";
-import { Pencil, Trash } from "@primeicons/vue";
+import { InfoCircle, Pencil, Trash } from "@primeicons/vue";
 import { storeToRefs } from "pinia";
 import { useDatabaseStore } from "@/stores/database.store";
 import { useDebounceFn, useMediaQuery } from "@vueuse/core";
+import { useConfirm } from "primevue/useconfirm";
 
 const props = defineProps<{
   items: Operation[];
@@ -53,6 +54,29 @@ const isMobile = useMediaQuery("(max-width: 1023px)");
 
 /* ---------- Selección y Store ---------- */
 const { sortField, sortOrder, columnFilters } = storeToRefs(useDatabaseStore());
+const confirm = useConfirm();
+
+const confirmDelete = (event: PointerEvent, item: Operation) => {
+  const target = event.target as HTMLElement;
+  confirm.require({
+    target: target,
+    message: "¿Está seguro de eliminar el pedido?",
+    icon: InfoCircle,
+    rejectProps: {
+      label: "Cancelar",
+      severity: "secondary",
+      outlined: true,
+    },
+    acceptProps: {
+      label: "Eliminar",
+      severity: "danger",
+      outlined: true
+    },
+    accept: () => {
+      emit("delete", item);
+    },
+  });
+};
 
 /* ---------- Filtros por columna ---------- */
 
@@ -342,7 +366,7 @@ const saveEdit = () => {
               severity="danger"
               outlined
               size="small"
-              @click="emit('delete', data)"
+              @click="confirmDelete($event, data)"
             >
               <Trash :size="16" />
             </Button>
