@@ -236,7 +236,7 @@ const setSearchLoading = ref<boolean>(false);
 
 const onSearch = useDebounceFn(async () => {
   if (!searchValue.value) {
-    element.value = undefined;
+    element.value = null;
     elementColors.value = null;
     elementSets.value = null;
     return;
@@ -461,7 +461,7 @@ watch(
   (newValue, oldValue) => {
     if (newValue !== oldValue) {
       searchValue.value = null;
-      element.value = undefined;
+      element.value = null;
       elementColors.value = null;
       elementSets.value = null;
     }
