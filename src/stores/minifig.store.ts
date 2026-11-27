@@ -57,6 +57,7 @@ export const useMinifigStore = defineStore("minifigs", () => {
 
       minifig.value = data;
     } catch (error) {
+      minifig.value = null;
       minifigError.value = error;
     } finally {
       minigifLoading.value = false;

@@ -9,7 +9,7 @@ import type { PartCategory } from "@/interfaces/part-categories.interface";
 const URL = import.meta.env.VITE_API_URL;
 
 export const useElementStore = defineStore("element", () => {
-  const element = ref<Element>();
+  const element = ref<Element | null>(null);
   const elementError = ref<unknown | null>(null);
   const elementLoading = ref<boolean>(false);
   const elementColors = ref<ColorElement[] | null>(null);
@@ -30,7 +30,7 @@ export const useElementStore = defineStore("element", () => {
   const createElementError = ref<unknown | null>(null);
 
   async function getElement(element_id: string) {
-    element.value = undefined;
+    element.value = null;
     elementColors.value = null;
     elementColorsSelect.value = null;
     elementSets.value = null;
@@ -52,6 +52,7 @@ export const useElementStore = defineStore("element", () => {
 
       element.value = data;
     } catch (error) {
+      element.value = null;
       elementError.value = error;
     } finally {
       elementLoading.value = false;

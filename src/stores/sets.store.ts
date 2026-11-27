@@ -90,6 +90,7 @@ export const useSetsStore = defineStore("sets", () => {
       });
       target.data.value = { ...data, set_num: undoNormalizeSet(data.set_num) };
     } catch (error) {
+      target.data.value = null;
       target.error.value = error;
     } finally {
       target.loading.value = false;

@@ -8,6 +8,7 @@ import { storeToRefs } from "pinia";
 import { useSetsStore } from "./stores/sets.store";
 import { useDatabaseStore } from "./stores/database.store";
 import { useToast } from "primevue/usetoast";
+import { useMinifigStore } from "./stores/minifig.store";
 
 const { elementError, partCategoriesError, createElementError } =
   storeToRefs(useElementStore());
@@ -31,6 +32,7 @@ const {
   deleteError,
   deleteSucces,
 } = storeToRefs(useDatabaseStore());
+const { minifigError, partsError, setsError } = storeToRefs(useMinifigStore());
 
 const toast = useToast();
 
@@ -50,7 +52,22 @@ const errorToasts: ErrorToast[] = [
   {
     error: setError,
     summary: "Error Al Buscar Set",
-    detail: "Hubo un error al encontrar el set.",
+    detail: "No existe set con el código ingresado.",
+  },
+  {
+    error: minifigError,
+    summary: "Error Al Buscar Minifigura",
+    detail: "No existe minifigura con el código ingresado.",
+  },
+  {
+    error: partsError,
+    summary: "Error Al Buscar Piezas De Minifigura",
+    detail: "Hubo un error al encontrar las piezas de la minifigura.",
+  },
+  {
+    error: setMinifigsError,
+    summary: "Error Al Buscar Sets Con Minifigura",
+    detail: "Hubo un error al encontrar los sets con la minifigura.",
   },
   {
     error: setMinifigsError,
