@@ -1,3 +1,4 @@
+import { undoNormalizeSet } from "@/helpers/helper";
 import { type ColorSet } from "@/interfaces/color.interface";
 import type { Element } from "@/interfaces/element.interface";
 import type { MinifigInterface } from "@/interfaces/minifig.interface";
@@ -38,6 +39,7 @@ export const useSetsStore = defineStore("sets", () => {
   const setPartQuantity = ref<number | null>(null);
   const setPartQuantityError = ref<unknown | null>(null);
   const setPartQuantityLoading = ref<boolean>(false);
+  const createSetError = ref<unknown | null>(null);
 
   async function getInstructions(set_num: string) {
     instructionsLoading.value = true;
@@ -86,7 +88,7 @@ export const useSetsStore = defineStore("sets", () => {
       const { data } = await axios.get(`${URL}/sets/set`, {
         params: { set_num },
       });
-      target.data.value = data;
+      target.data.value = { ...data, set_num: undoNormalizeSet(data.set_num) };
     } catch (error) {
       target.error.value = error;
     } finally {
@@ -153,7 +155,7 @@ export const useSetsStore = defineStore("sets", () => {
 
   async function getSetPartQuantity(set_num: string, element_id: string) {
     setPartQuantityError.value = null;
-    setPartQuantityLoading.value = true
+    setPartQuantityLoading.value = true;
 
     try {
       const { data } = await axios.get<{ quantityElement: number }>(
@@ -168,6 +170,15 @@ export const useSetsStore = defineStore("sets", () => {
       setPartQuantityError.value = error;
     } finally {
       setPartQuantityLoading.value = false;
+    }
+  }
+
+  async function createSet(set: SetInterface): Promise<SetInterface | void> {
+    try {
+      const { data } = await axios.put(`${URL}/sets/create`, set);
+      return data;
+    } catch (error) {
+      createSetError.value = error;
     }
   }
 
@@ -207,5 +218,7 @@ export const useSetsStore = defineStore("sets", () => {
     setPartQuantityError,
     setPartQuantityLoading,
     getSetPartQuantity,
+    createSet,
+    createSetError,
   };
 });

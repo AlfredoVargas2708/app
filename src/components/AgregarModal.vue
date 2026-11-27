@@ -204,6 +204,7 @@ import Spinner from "@primeicons/vue/spinner";
 import { useToast } from "primevue/usetoast";
 import type { Element } from "@/interfaces/element.interface";
 import type { MinifigInterface } from "@/interfaces/minifig.interface";
+import { normalizeSet, undoNormalizeSet } from "@/helpers/helper";
 
 const dialogRef = inject<Ref<DynamicDialogInstance>>("dialogRef");
 const extraData = ref<SetInterface | null>(dialogRef?.value.data.extra ?? null);
@@ -389,6 +390,7 @@ function createOperation() {
     pedido: isPedidoValue.value === "Si" ? true : false,
     completo: isAppearedValue.value === "Si" ? true : false,
     cantidad: quantityValue.value,
+    set_num: undoNormalizeSet((extraData.value ?? {}).set_num ?? '')
   };
 
   extraData.value = null;

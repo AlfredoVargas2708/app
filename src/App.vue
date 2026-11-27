@@ -9,7 +9,8 @@ import { useSetsStore } from "./stores/sets.store";
 import { useDatabaseStore } from "./stores/database.store";
 import { useToast } from "primevue/usetoast";
 
-const { elementError, partCategoriesError } = storeToRefs(useElementStore());
+const { elementError, partCategoriesError, createElementError } =
+  storeToRefs(useElementStore());
 const {
   instructionsError,
   setColorsError,
@@ -19,9 +20,17 @@ const {
   setPartsError,
   setMinifigs,
   setParts,
+  createSetError,
 } = storeToRefs(useSetsStore());
-const { createError, inventarioError, createSuccess } =
-  storeToRefs(useDatabaseStore());
+const {
+  createError,
+  inventarioError,
+  createSuccess,
+  editSucces,
+  editError,
+  deleteError,
+  deleteSucces,
+} = storeToRefs(useDatabaseStore());
 
 const toast = useToast();
 
@@ -85,6 +94,26 @@ const errorToasts: ErrorToast[] = [
     summary: "Error Al Obtener Inventario",
     detail: "No se pudo obtener los pedidos en el inventario",
   },
+  {
+    error: editError,
+    summary: "Error Al Editar Inventario",
+    detail: "No se pudo editar el pedidos del inventario",
+  },
+  {
+    error: createElementError,
+    summary: "Error Al Crear Pieza",
+    detail: "Error en creación de nueva pieza",
+  },
+  {
+    error: createSetError,
+    summary: "Error Al Crear Set",
+    detail: "Error en creación de nuevo set",
+  },
+  {
+    error: deleteError,
+    summary: "Error Al Eliminar Pedido",
+    detail: "Error en la eliminación del pedido",
+  },
 ];
 
 errorToasts.forEach(({ error, summary, detail, onError }) => {
@@ -101,6 +130,29 @@ watch(createSuccess, (success) => {
       severity: "success",
       summary: "Pedido Creado",
       detail: "Se agrego el pedido al inventario correctamente",
+      life: 4000,
+    });
+  }
+});
+
+watch(editSucces, (success) => {
+  if (success) {
+    toast.add({
+      severity: "success",
+      summary: "Operación Editada",
+      detail: "Se edito el pedido del inventario correctamente",
+      life: 4000,
+    });
+  }
+});
+
+watch(deleteSucces, (success) => {
+  if (success) {
+    toast.add({
+      severity: "success",
+      summary: "Operación Eliminada",
+      detail: "Se elimino el pedido del inventario correctamente",
+      life: 4000,
     });
   }
 });

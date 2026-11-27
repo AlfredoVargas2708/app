@@ -29,7 +29,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "edit", item: Operation, field: keyof Operation): void;
-  (e: "delete", items: Operation[]): void;
+  (e: "delete", items: Operation): void;
   (
     e: "updateStatus",
     payload: {
@@ -134,7 +134,6 @@ const onSort = (event: DataTableSortEvent) => {
 };
 
 const updateCheckbox = (value: boolean, id: number, field: keyof Operation) => {
-  console.log("updateCheckbox fired:", { value, id, field });
   emit("updateStatus", {
     id,
     field,
@@ -192,7 +191,7 @@ const onCellEditComplete = (event: DataTableCellEditCompleteEvent) => {
               severity="danger"
               outlined
               size="small"
-              @click="emit('delete', [data])"
+              @click="emit('delete', data)"
             >
               <Trash :size="16" />
             </Button>
@@ -398,7 +397,7 @@ const onCellEditComplete = (event: DataTableCellEditCompleteEvent) => {
           </template>
           <template #editor="{ data }">
             <InputText
-              v-model="data.set_num.split('-')[0]"
+              v-model="data.set_num"
               autofocus
               fluid
               size="small"

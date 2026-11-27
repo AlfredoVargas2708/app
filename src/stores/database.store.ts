@@ -13,6 +13,7 @@ type FilterValue =
 export const useDatabaseStore = defineStore("database", () => {
   const createError = ref<unknown | null>(null);
   const createSuccess = ref<boolean>(false);
+  const editSucces = ref<boolean>(false);
   const inventario = ref<Operation[]>([]);
   const inventarioLoading = ref<boolean>(false);
   const inventarioError = ref<unknown | null>(null);
@@ -23,6 +24,8 @@ export const useDatabaseStore = defineStore("database", () => {
   const sortOrder = ref<string | null>(null);
   const columnFilters = ref<Record<string, FilterValue>>({});
   const editError = ref<unknown | null>(null);
+  const deleteError = ref<unknown | null>(null);
+  const deleteSucces = ref<boolean>(false);
 
   async function createOperation(body: unknown) {
     createSuccess.value = false;
@@ -84,10 +87,12 @@ export const useDatabaseStore = defineStore("database", () => {
     id: number,
     body: { field: string; value: boolean },
   ) {
+    editSucces.value = false;
     editError.value = null;
 
     try {
       await axios.put(`${URL}/database/status/${id}`, body);
+      editSucces.value = true;
     } catch (error) {
       editError.value = error;
     }
@@ -95,6 +100,7 @@ export const useDatabaseStore = defineStore("database", () => {
 
   async function editOperation(operation: Operation, field: keyof Operation) {
     editError.value = null;
+    editSucces.value = false;
 
     try {
       const { data } = await axios.put<Element>(
@@ -102,10 +108,23 @@ export const useDatabaseStore = defineStore("database", () => {
         { field, value: operation[field] },
       );
 
+      editSucces.value = true;
       return data;
     } catch (error) {
       editError.value = error;
       return null;
+    }
+  }
+
+  async function deleteOperation(id: number) {
+    deleteError.value = null;
+    deleteSucces.value = false;
+
+    try {
+      await axios.delete(`${URL}/database/delete-operation/${id}`);
+      deleteSucces.value = true;
+    } catch (error) {
+      deleteError.value = error;
     }
   }
 
@@ -126,5 +145,9 @@ export const useDatabaseStore = defineStore("database", () => {
     editError,
     editStatus,
     editOperation,
+    editSucces,
+    deleteError,
+    deleteSucces,
+    deleteOperation
   };
 });
